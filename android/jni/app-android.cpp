@@ -11,6 +11,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstdint>
+#include <cstdio>
+
+#ifndef _MSC_VER
+#include <unistd.h>
+#endif
 
 #include <map>
 #include <sstream>
@@ -103,6 +108,7 @@ struct JNIEnv {};
 #include "Core/CmdLine.h"
 #include "Core/Config.h"
 #include "Core/ConfigValues.h"
+#include "Core/DeviceOptimization.h"
 #include "Core/Loaders.h"
 #include "Core/KeyMap.h"
 #include "Core/Util/RecentFiles.h"
@@ -194,6 +200,50 @@ static std::atomic<bool> renderer_inited{false};
 
 static bool sustainedPerfSupported = false;
 static std::string g_installerName;
+static std::mutex g_hardwareInfoLock;
+static std::string g_hardwareSoc;
+static std::atomic<int> g_totalRamMB{0};
+static std::atomic<int> g_thermalStatus{-1};
+static std::atomic<bool> g_lowMemoryDevice{false};
+
+static void ProbeFallbackHardwareInfo() {
+#ifndef _MSC_VER
+	if (g_totalRamMB.load() <= 0) {
+		long pages = sysconf(_SC_PHYS_PAGES);
+		long pageSize = sysconf(_SC_PAGE_SIZE);
+		if (pages > 0 && pageSize > 0) {
+			int64_t totalBytes = (int64_t)pages * (int64_t)pageSize;
+			g_totalRamMB.store((int)(totalBytes / (1024 * 1024)));
+		} else if (FILE *f = fopen("/proc/meminfo", "re")) {
+			char line[128];
+			while (fgets(line, sizeof(line), f)) {
+				unsigned long kb = 0;
+				if (sscanf(line, "MemTotal: %lu kB", &kb) == 1 && kb > 0) {
+					g_totalRamMB.store((int)(kb / 1024));
+					break;
+				}
+			}
+			fclose(f);
+		}
+	}
+	std::lock_guard<std::mutex> guard(g_hardwareInfoLock);
+	if (g_hardwareSoc.empty()) {
+		if (FILE *f = fopen("/proc/cpuinfo", "re")) {
+			char line[256];
+			while (fgets(line, sizeof(line), f)) {
+				if (strncmp(line, "Hardware", 8) == 0) {
+					const char *colon = strchr(line, ':');
+					if (colon) {
+						g_hardwareSoc = StripSpaces(std::string_view(colon + 1));
+						break;
+					}
+				}
+			}
+			fclose(f);
+		}
+	}
+#endif
+}
 
 // Written on the Java UI thread, read on the render thread.
 static std::mutex permissionsLock;
@@ -352,6 +402,11 @@ std::string System_GetProperty(SystemProperty prop) {
 		return PPSSPP_GIT_VERSION;
 	case SYSPROP_INSTALLER_NAME:
 		return g_installerName;
+	case SYSPROP_HARDWARE_SOC:
+	{
+		std::lock_guard<std::mutex> guard(g_hardwareInfoLock);
+		return g_hardwareSoc;
+	}
 	default:
 		return "";
 	}
@@ -388,6 +443,10 @@ int64_t System_GetPropertyInt(SystemProperty prop) {
 		return optimalSampleRate;
 	case SYSPROP_AUDIO_OPTIMAL_FRAMES_PER_BUFFER:
 		return optimalFramesPerBuffer;
+	case SYSPROP_TOTAL_RAM_MB:
+		return g_totalRamMB.load();
+	case SYSPROP_THERMAL_STATUS:
+		return g_thermalStatus.load();
 	default:
 		return -1;
 	}
@@ -519,6 +578,18 @@ bool System_GetPropertyBool(SystemProperty prop) {
 #endif
 	case SYSPROP_CAN_GET_FREE_SPACE_FAST:
 		return false;
+	case SYSPROP_LOW_MEMORY_DEVICE:
+	{
+		if (g_lowMemoryDevice.load())
+			return true;
+		int ramMB = g_totalRamMB.load();
+		return ramMB > 0 && ramMB <= 3400;
+	}
+	case SYSPROP_ENOUGH_RAM_FOR_FULL_ISO:
+	{
+		// Allow caching full ISO images only on >= 4 GB variants, preserving free RAM on 3 GB Realme C21Y.
+		return !g_lowMemoryDevice.load() && g_totalRamMB.load() >= 3500;
+	}
 	default:
 		return false;
 	}
@@ -609,7 +680,7 @@ static std::string QueryConfig(std::string_view query) {
 	} else if (query == "immersiveMode") {
 		return g_Config.GetDisplayLayoutConfig(g_display.GetDeviceOrientation()).bImmersiveMode ? "1" : "0";
 	} else if (query == "sustainedPerformanceMode") {
-		return g_Config.bSustainedPerformanceMode ? "1" : "0";
+		return (g_Config.bSustainedPerformanceMode || IsThermalSustainedPerfForced()) ? "1" : "0";
 	} else if (query == "audioMixWithOthers") {
 		return g_Config.bAudioMixWithOthers ? "1" : "0";
 	} else if (query == "externalDisplayOutput") {
@@ -754,6 +825,7 @@ extern "C" void Java_org_ppsspp_ppsspp_NativeApp_init
 	std::string cacheDir = GetJavaString(env, jcacheDir);
 	std::string buildBoard = GetJavaString(env, jboard);
 	boardName = buildBoard;
+	ProbeFallbackHardwareInfo();
 	EARLY_LOG("NativeApp.init(): External storage path: %s", externalStorageDir.c_str());
 	EARLY_LOG("NativeApp.init(): Launch shortcut parameter: %s", shortcut_param.c_str());
 
@@ -1524,6 +1596,32 @@ extern "C" void JNICALL Java_org_ppsspp_ppsspp_NativeApp_sendMessageFromJava(JNI
 	} else if (msg == "core_powerSaving") {
 		// Forward.
 		System_PostUIMessage(UIMessage::POWER_SAVING, prm);
+	} else if (msg == "device_hwInfo") {
+		std::vector<std::string> parts;
+		SplitString(prm, '|', parts);
+		if (parts.size() >= 2) {
+			int ramMB = (int)parseLong(parts[0]);
+			if (ramMB > 0) {
+				g_totalRamMB.store(ramMB);
+			}
+			g_lowMemoryDevice.store(parts[1] == "1");
+		}
+		if (parts.size() >= 3) {
+			std::lock_guard<std::mutex> guard(g_hardwareInfoLock);
+			std::string hw = StripSpaces(parts[2]);
+			std::string soc = parts.size() >= 4 ? StripSpaces(parts[3]) : "";
+			if (!soc.empty() && soc != hw) {
+				g_hardwareSoc = hw.empty() ? soc : (hw + " / " + soc);
+			} else if (!hw.empty()) {
+				g_hardwareSoc = hw;
+			}
+		}
+	} else if (msg == "device_thermalStatus") {
+		int status = atoi(prm.c_str());
+		g_thermalStatus.store(status);
+		System_PostUIMessage(UIMessage::THERMAL_STATUS_CHANGED, prm);
+	} else if (msg == "device_trimMemory") {
+		System_PostUIMessage(UIMessage::TRIM_MEMORY, prm);
 	} else if (msg == "exception") {
 		g_OSD.Show(OSDType::MESSAGE_ERROR, std::string("Java Exception"), prm, 10.0f);
 	} else if (msg == "shortcutParam") {

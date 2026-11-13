@@ -108,6 +108,7 @@
 #include "Core/Config.h"
 #include "Core/ConfigValues.h"
 #include "Core/Core.h"
+#include "Core/DeviceOptimization.h"
 #include "Core/Debugger/Breakpoints.h"
 #include "Core/FileLoaders/DiskCachingFileLoader.h"
 #include "Core/FrameTiming.h"
@@ -1608,6 +1609,13 @@ bool HandleGlobalMessage(UIMessage message, const std::string &value) {
 		if (imDebugger_) {
 			imDebugger_->OnSoftKeyboardHidden();
 		}
+		return true;
+	} else if (message == UIMessage::THERMAL_STATUS_CHANGED) {
+		UpdateThermalStatus(atoi(value.c_str()));
+		return true;
+	} else if (message == UIMessage::TRIM_MEMORY) {
+		int level = atoi(value.c_str());
+		INFO_LOG(Log::System, "Android onTrimMemory(%d) received", level);
 		return true;
 	} else {
 		return false;

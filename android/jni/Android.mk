@@ -689,6 +689,7 @@ EXEC_AND_LIB_FILES := \
   $(SRC)/Core/CmdLine.cpp \
   $(SRC)/Core/Config.cpp \
   $(SRC)/Core/ConfigSettings.cpp \
+  $(SRC)/Core/DeviceOptimization.cpp \
   $(SRC)/Core/CoreTiming.cpp \
   $(SRC)/Core/CwCheat.cpp \
   $(SRC)/Core/EmuThread.cpp \

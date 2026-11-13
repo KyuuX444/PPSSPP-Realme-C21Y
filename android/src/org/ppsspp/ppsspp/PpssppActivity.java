@@ -512,6 +512,7 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 		PackageManager packageManager = getPackageManager();
 		String installerName = getInstallerName(packageManager);
 
+		sendDeviceHardwareInfo();
 		NativeApp.audioConfig(optimalFramesPerBuffer, optimalSampleRate);
 		NativeApp.init(model, deviceType, languageRegion, apkFilePath, dataDir, extStorageDir, externalFilesDir, nativeLibDir, additionalStorageDirs, cacheDir, shortcut, installerName, Build.VERSION.SDK_INT, Build.BOARD);
 
@@ -572,6 +573,29 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 			Log.e(TAG, "Exception while determining installer name");
 		}
 		return installerName;
+	}
+
+	private void sendDeviceHardwareInfo() {
+		if (!libraryLoaded) {
+			return;
+		}
+		long totalRamMB = 0;
+		boolean lowRam = false;
+		try {
+			ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+			if (am != null) {
+				ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+				am.getMemoryInfo(mi);
+				totalRamMB = mi.totalMem / (1024L * 1024L);
+				lowRam = mi.lowMemory || am.isLowRamDevice();
+			}
+		} catch (Exception e) {
+			Log.w(TAG, "Failed querying ActivityManager MemoryInfo: " + e);
+		}
+		String hardware = Build.HARDWARE != null ? Build.HARDWARE : "";
+		String socModel = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && Build.SOC_MODEL != null ? Build.SOC_MODEL : "";
+		String payload = totalRamMB + "|" + (lowRam ? "1" : "0") + "|" + hardware + "|" + socModel;
+		NativeApp.sendMessageFromJava("device_hwInfo", payload);
 	}
 
 	private void updateSustainedPerformanceMode() {
@@ -1304,6 +1328,14 @@ public class PpssppActivity extends AppCompatActivity implements SensorEventList
 		case Sensor.TYPE_GYROSCOPE:
 			NativeApp.gyroscope(event.values[0], event.values[1], event.values[2], event.timestamp);
 			break;
+		}
+	}
+
+	@Override
+	public void onTrimMemory(int level) {
+		super.onTrimMemory(level);
+		if (libraryLoaded && initialized && !m_hasNoNativeBinary) {
+			NativeApp.sendMessageFromJava("device_trimMemory", Integer.toString(level));
 		}
 	}
 

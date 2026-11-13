@@ -365,6 +365,7 @@ public:
 	bool bFullScreenMulti;
 	bool bAllowFullScreenExclusive;
 	int iInternalResolution;  // 0 = Auto (native), 1 = 1x (480x272), 2 = 2x, 3 = 3x, 4 = 4x and so on.
+	int iPerformanceProfile;  // PerformanceProfile (0 = ULTRA_PERFORMANCE, 1 = BALANCED, 2 = COMPATIBILITY)
 	int iAnisotropyLevel;  // 0 - 5, powers of 2: 0 = 1x = no aniso
 	int iMultiSampleLevel;
 	int bHighQualityDepth;

@@ -53,6 +53,7 @@
 #include "Core/Config.h"
 #include "Core/ConfigSettings.h"
 #include "Core/ConfigValues.h"
+#include "Core/DeviceOptimization.h"
 #include "Core/KeyMap.h"
 #include "Core/Reporting.h"
 #include "Core/HLE/sceUsbCam.h"
@@ -238,6 +239,20 @@ static float DefaultUISaturation() {
 	return IsVREnabled() ? 1.5f : 1.0f;
 }
 
+static int DefaultBackgroundAnimation() {
+	if (IsRealmeC21YDevice()) {
+		return (int)BackgroundAnimation::OFF;
+	}
+	return (int)BackgroundAnimation::WAVE;
+}
+
+static bool DefaultTransparentBackground() {
+	if (IsRealmeC21YDevice() && IsLowRamDeviceVariant()) {
+		return false;
+	}
+	return true;
+}
+
 static int DefaultUIScaleFactor() {
 // Android also return true on Linux, so we check it separately first. It was never intended for it to get -1.
 #if PPSSPP_PLATFORM(ANDROID) || PPSSPP_PLATFORM(IOS)
@@ -306,6 +321,10 @@ static void OnSkipBufferEffectsChanged() {
 	}
 	System_PostUIMessage(UIMessage::GPU_RENDER_RESIZED);
 	System_PostUIMessage(UIMessage::GPU_CONFIG_CHANGED);
+}
+
+static void OnPerformanceProfileChanged() {
+	ApplyPerformanceProfile((PerformanceProfile)g_Config.iPerformanceProfile, true);
 }
 
 static void OnAudioModeChanged() {
@@ -464,9 +483,9 @@ static constexpr ConfigSetting generalSettings[] = {
 	ConfigSetting("ScreenRotation", SETTING(g_Config, iScreenRotation), ROTATION_AUTO, CfgFlag::DEFAULT),
 #endif
 
-	ConfigSetting("BackgroundAnimation", SETTING(g_Config, iBackgroundAnimation), (int)BackgroundAnimation::WAVE, CfgFlag::DEFAULT)
+	ConfigSetting("BackgroundAnimation", SETTING(g_Config, iBackgroundAnimation), &DefaultBackgroundAnimation, CfgFlag::DEFAULT)
 		.Label(I18NCat::SYSTEM, "UI background animation").Choices(backgroundAnimationNames),
-	ConfigSetting("TransparentBackground", SETTING(g_Config, bTransparentBackground), true, CfgFlag::DEFAULT)
+	ConfigSetting("TransparentBackground", SETTING(g_Config, bTransparentBackground), &DefaultTransparentBackground, CfgFlag::DEFAULT)
 		.Label(I18NCat::SYSTEM, "Transparent UI background"),
 	ConfigSetting("UITint", SETTING(g_Config, fUITint), 0.0, CfgFlag::DEFAULT)
 		.Label(I18NCat::SYSTEM, "Color tint").Range(0.0f, 1.0f, 0.01f),
@@ -583,10 +602,14 @@ static constexpr ConfigSetting cpuSettings[] = {
 };
 
 static int DefaultInternalResolution() {
-	// Auto on Windows and Linux, 2x on large screens and iOS, 1x elsewhere.
+	// Auto on Windows and Linux, 2x on large screens and iOS, 1x on Realme C21Y (Mali-G52) and smaller displays.
 #if PPSSPP_PLATFORM(ANDROID)
 	if (System_GetPropertyInt(SYSPROP_DEVICE_TYPE) == DEVICE_TYPE_VR) {
 		return 4;
+	}
+	if (IsRealmeC21YDevice()) {
+		INFO_LOG(Log::Config, "Realme C21Y detected: defaulting internal resolution to 1x PSP");
+		return 1;
 	}
 	int longestDisplaySide = std::max(System_GetPropertyInt(SYSPROP_DISPLAY_XRES), System_GetPropertyInt(SYSPROP_DISPLAY_YRES));
 	int scale = longestDisplaySide >= 1000 ? 2 : 1;
@@ -597,6 +620,22 @@ static int DefaultInternalResolution() {
 #else
 	return 0;
 #endif
+}
+
+static int DefaultFrameSkip() {
+	return IsRealmeC21YDevice() ? 1 : 0;
+}
+
+static bool DefaultAutoFrameSkip() {
+	return IsRealmeC21YDevice();
+}
+
+static int DefaultAnisotropyLevel() {
+	return IsRealmeC21YDevice() ? 0 : 4;
+}
+
+static bool DefaultLowLatencyPresent() {
+	return IsRealmeC21YDevice();
 }
 
 static int DefaultFastForwardMode() {
@@ -919,9 +958,12 @@ static constexpr const char *appSwitchModeNames[] = { "Swipe once to switch app 
 static constexpr const char *replacementTextureLoadSpeedNames[] = { "Slow (smooth)", "Medium", "Fast", "Instant (may stutter)" };
 
 static constexpr const char *androidFramerateModeNames[] = { "Default", "Request 60 Hz", "Force 60Hz" };
+static constexpr const char *performanceProfileNames[] = { "ULTRA PERFORMANCE", "BALANCED", "COMPATIBILITY" };
 
 static constexpr ConfigSetting graphicsSettings[] = {
 	ConfigSetting("iShowStatusFlags", SETTING(g_Config, iShowStatusFlags), 0, CfgFlag::PER_GAME),
+	ConfigSetting("PerformanceProfile", SETTING(g_Config, iPerformanceProfile), &DefaultPerformanceProfileForDevice, CfgFlag::PER_GAME)
+		.Label(I18NCat::GRAPHICS, "PerformanceMode", "Performance Mode").Choices(performanceProfileNames).OnChanged(&OnPerformanceProfileChanged),
 	ConfigSetting("GraphicsBackend", SETTING(g_Config, iGPUBackend), &DefaultGPUBackend, &GPUBackendTranslator::To, &GPUBackendTranslator::From, CfgFlag::DEFAULT | CfgFlag::REPORT)
 		.Label(I18NCat::GRAPHICS, "Backend").Choices(gpuBackendNames),
 	ConfigSetting("ExternalDisplay", SETTING(g_Config, iExternalDisplay), (int)ExternalDisplayMode::SHOW_GAME, CfgFlag::DEFAULT)
@@ -963,9 +1005,9 @@ static constexpr ConfigSetting graphicsSettings[] = {
 	ConfigSetting("AndroidHwScale", SETTING(g_Config, iAndroidHwScale), 0, CfgFlag::DEFAULT)
 		.Label(I18NCat::GRAPHICS, "Display Resolution (HW scaler)").Choices(androidHwScaleNames).OnChanged(&OnAndroidHwScaleChanged),
 	ConfigSetting("HighQualityDepth", SETTING(g_Config, bHighQualityDepth), true, CfgFlag::PER_GAME | CfgFlag::REPORT),
-	ConfigSetting("FrameSkip", SETTING(g_Config, iFrameSkip), 0, CfgFlag::PER_GAME | CfgFlag::REPORT)
+	ConfigSetting("FrameSkip", SETTING(g_Config, iFrameSkip), &DefaultFrameSkip, CfgFlag::PER_GAME | CfgFlag::REPORT)
 		.Label(I18NCat::GRAPHICS, "Frame Skipping").Choices(frameSkipNames),
-	ConfigSetting("AutoFrameSkip", SETTING(g_Config, bAutoFrameSkip), false, CfgFlag::PER_GAME | CfgFlag::REPORT)
+	ConfigSetting("AutoFrameSkip", SETTING(g_Config, bAutoFrameSkip), &DefaultAutoFrameSkip, CfgFlag::PER_GAME | CfgFlag::REPORT)
 		.Label(I18NCat::GRAPHICS, "Auto FrameSkip").OnChanged(&OnAutoFrameSkipChanged),
 	ConfigSetting("StereoRendering", SETTING(g_Config, bStereoRendering), false, CfgFlag::PER_GAME)
 		.Label(I18NCat::GRAPHICS, "Stereo rendering"),
@@ -984,8 +1026,9 @@ static constexpr ConfigSetting graphicsSettings[] = {
 	ConfigSetting("RestartRequired", SETTING(g_Config, bRestartRequired), false, CfgFlag::DONT_SAVE),
 #endif
 
-	// Most low-performance (and many high performance) mobile GPUs do not support aniso anyway so defaulting to 4 is fine.
-	ConfigSetting("AnisotropyLevel", SETTING(g_Config, iAnisotropyLevel), 4, CfgFlag::PER_GAME)
+	// Most low-performance (and many high performance) mobile GPUs do not support aniso anyway so defaulting to 4 is fine,
+	// except Mali-G52 on Realme C21Y where disabling aniso by default saves texture bandwidth.
+	ConfigSetting("AnisotropyLevel", SETTING(g_Config, iAnisotropyLevel), &DefaultAnisotropyLevel, CfgFlag::PER_GAME)
 		.Label(I18NCat::GRAPHICS, "Anisotropic Filtering").Choices(anisotropyLevelNames).OnChanged(&OnGPUConfigChanged),
 	ConfigSetting("MultiSampleLevel", SETTING(g_Config, iMultiSampleLevel), 0, CfgFlag::PER_GAME)  // Number of samples is 1 << iMultiSampleLevel
 		.Label(I18NCat::GRAPHICS, "Antialiasing (MSAA)").Choices(msaaLevelNames).OnChanged(&OnRenderResizingChanged),
@@ -1028,7 +1071,7 @@ static constexpr ConfigSetting graphicsSettings[] = {
 	ConfigSetting("TexHardwareScaling", SETTING(g_Config, bTexHardwareScaling), false, CfgFlag::PER_GAME | CfgFlag::REPORT),
 	ConfigSetting("VerticalSync", SETTING(g_Config, bVSync), true, CfgFlag::PER_GAME)
 		.Label(I18NCat::GRAPHICS, "VSync"),
-	ConfigSetting("LowLatencyPresent", SETTING(g_Config, bLowLatencyPresent), false, CfgFlag::PER_GAME)
+	ConfigSetting("LowLatencyPresent", SETTING(g_Config, bLowLatencyPresent), &DefaultLowLatencyPresent, CfgFlag::PER_GAME)
 		.Label(I18NCat::GRAPHICS, "Low latency display"),
 	ConfigSetting("BloomHack", SETTING(g_Config, iBloomHack), 0, CfgFlag::PER_GAME | CfgFlag::REPORT)
 		.Label(I18NCat::GRAPHICS, "Lower resolution for effects").Choices(bloomHackNames),
@@ -2114,6 +2157,7 @@ void Config::PostLoadCleanup() {
 
 	// This caps the aniso level exponent to 4 (so 16x.). No hardware supports more anyway.
 	iAnisotropyLevel = std::clamp(iAnisotropyLevel, 0, 4);
+	iPerformanceProfile = std::clamp(iPerformanceProfile, 0, (int)PerformanceProfile::COMPATIBILITY);
 
 	if (iGPUBackend == 1) {  // d3d9, no longer supported. Fall back to D3D11.
 		iGPUBackend = (int)GPUBackend::DIRECT3D11;

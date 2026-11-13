@@ -22,6 +22,7 @@
 #include "Common/UI/ScreenManager.h"
 #include "Core/System.h"
 #include "Core/Config.h"
+#include "Core/DeviceOptimization.h"
 #include "GPU/GPUState.h"  // ugh
 #include "UI/SystemInfoScreen.h"
 #include "UI/IconCache.h"
@@ -147,6 +148,19 @@ void SystemInfoScreen::CreateDeviceInfoTab(UI::LinearLayout *deviceSpecs) {
 	std::string board = System_GetProperty(SYSPROP_BOARDNAME);
 	if (!board.empty())
 		systemInfo->Add(new InfoItem(si->T("Board"), board));
+	DeviceHardwareProfile hwProfile = DetectDeviceHardwareProfile();
+	if (hwProfile.totalRamMB > 0) {
+		systemInfo->Add(new InfoItem(si->T("Total RAM"), StringFromFormat("%d MB (%s)", hwProfile.totalRamMB, hwProfile.isLowRamVariant ? "3 GB class" : "4 GB+ class")));
+	}
+	if (!hwProfile.profileLabel.empty() && hwProfile.profileLabel != "Standard") {
+		systemInfo->Add(new InfoItem(si->T("Hardware Profile"), hwProfile.profileLabel));
+	}
+#if PPSSPP_PLATFORM(ANDROID)
+	int thermalStatus = GetCurrentThermalStatus();
+	if (thermalStatus >= 0) {
+		systemInfo->Add(new InfoItem(si->T("Thermal Status"), GetThermalStatusName(thermalStatus)));
+	}
+#endif
 	systemInfo->Add(new InfoItem(si->T("ABI"), GetCompilerABI()));
 	if (System_GetPropertyBool(SYSPROP_DEBUGGER_PRESENT)) {
 		systemInfo->Add(new InfoItem(si->T("Debugger Present"), di->T("Yes")));

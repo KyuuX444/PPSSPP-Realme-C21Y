@@ -159,6 +159,10 @@ void BuildGraphicsSettings(SettingsPage *page) {
 
 	page->Header("Rendering");
 
+	page->Setting(&g_Config.iPerformanceProfile).OnChange([host](UI::EventParams &e) {
+		host->RecreatePageViews();
+	}).Hint("Select preset (Ultra Performance, Balanced, Compatibility). Individual settings below remain customizable.");
+
 #if !PPSSPP_PLATFORM(UWP)
 	page->Setting(&g_Config.iGPUBackend).Visible(HasBackendChoice()).Setup([host](View *view) {
 		PopupMultiChoice *renderingBackendChoice = static_cast<PopupMultiChoice *>(view);

@@ -261,6 +261,12 @@ enum SystemProperty {
 	// The host buffers microphone input, and hands it over on the CPU thread when sceUsbMic sends
 	// "pollRecording". Hosts that push it from their own threads leave this false.
 	SYSPROP_MICROPHONE_NEEDS_POLLING,
+
+	// Hardware capability / memory / thermal properties (Android / ARM64).
+	SYSPROP_HARDWARE_SOC,
+	SYSPROP_TOTAL_RAM_MB,
+	SYSPROP_THERMAL_STATUS,
+	SYSPROP_LOW_MEMORY_DEVICE,
 };
 
 // NOTE: Unlike requests or UIMessage, these are synchronous!
@@ -332,6 +338,8 @@ enum class UIMessage {
 	ADHOC_SERVER_LIST_CHANGED,
 	SAVESTATE_SLOT_SAVED,  // A save state save finished: written, failed or refused.
 	SOFT_KEYBOARD_HIDDEN,  // The platform closed a soft keyboard forced by System_SetSoftKeyboardForced.
+	THERMAL_STATUS_CHANGED,
+	TRIM_MEMORY,
 };
 
 std::string System_GetProperty(SystemProperty prop);

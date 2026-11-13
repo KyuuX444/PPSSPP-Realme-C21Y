@@ -283,6 +283,8 @@ add_library(Core STATIC
 	ConfigSettings.cpp
 	ConfigSettings.h
 	ConfigValues.h
+	DeviceOptimization.cpp
+	DeviceOptimization.h
 	ControlMapper.cpp
 	ControlMapper.h
 	Core.cpp

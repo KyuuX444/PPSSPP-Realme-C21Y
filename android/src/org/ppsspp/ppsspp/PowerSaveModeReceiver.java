@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.Uri;
+import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Log;
@@ -15,6 +16,7 @@ public class PowerSaveModeReceiver extends BroadcastReceiver {
 	private static final String TAG = PowerSaveModeReceiver.class.getSimpleName();
 	private static boolean isBatteryLow = false;
 	private final ContentObserver settingsObserver;
+	private Object thermalStatusListener = null;
 
 	@Override
 	public void onReceive(final Context context, final Intent intent) {
@@ -54,12 +56,53 @@ public class PowerSaveModeReceiver extends BroadcastReceiver {
 		};
 		activity.getContentResolver().registerContentObserver(Settings.System.CONTENT_URI, true, settingsObserver);
 		sendPowerSaving(activity);
+		registerThermalListener(activity);
+	}
+
+	private void registerThermalListener(final Context context) {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+			return;
+		}
+		try {
+			final PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+			if (pm == null) {
+				return;
+			}
+			sendThermalStatus(pm.getCurrentThermalStatus());
+			PowerManager.OnThermalStatusChangedListener listener = status -> sendThermalStatus(status);
+			pm.addThermalStatusListener(listener);
+			thermalStatusListener = listener;
+		} catch (Exception e) {
+			Log.w(TAG, "Failed to register thermal listener: " + e);
+		}
+	}
+
+	private void sendThermalStatus(int status) {
+		if (!PpssppActivity.libraryLoaded) {
+			return;
+		}
+		try {
+			NativeApp.sendMessageFromJava("device_thermalStatus", Integer.toString(status));
+		} catch (Exception e) {
+			Log.w(TAG, "Failed sending thermal status: " + e);
+		}
 	}
 
 	public void destroy(final Context context) {
 		context.unregisterReceiver(this);
 		// The observer holds on to the activity, and the system holds on to a registered observer.
 		context.getContentResolver().unregisterContentObserver(settingsObserver);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && thermalStatusListener != null) {
+			try {
+				final PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+				if (pm != null) {
+					pm.removeThermalStatusListener((PowerManager.OnThermalStatusChangedListener) thermalStatusListener);
+				}
+			} catch (Exception e) {
+				Log.w(TAG, "Failed to remove thermal listener: " + e);
+			}
+			thermalStatusListener = null;
+		}
 	}
 
 	private static boolean getNativePowerSaving(final Context context) {
