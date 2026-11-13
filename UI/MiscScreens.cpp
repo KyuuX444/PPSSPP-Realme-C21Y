@@ -509,10 +509,18 @@ void LogoScreen::DrawForeground(UIContext &dc) {
 	dc.Draw()->DrawImage(ImageID("I_LOGO"), bounds.centerX() + 45, startY, 1.5f, 0xFFFFFFFF, ALIGN_CENTER);
 	//dc.Draw()->DrawTextShadow(UBUNTU48, "PPSSPP", bounds.w / 2, bounds.h / 2 - 30, textColor, ALIGN_CENTER);
 	dc.SetFontScale(1.0f, 1.0f);
+#ifdef REALME_C21Y_EDITION
+	dc.DrawText(dc.GetTheme().uiFont, "PSP by Kyuu (Realme C21Y Edition)", bounds.centerX(), startY + 55, textColor, ALIGN_CENTER);
+	dc.DrawText(dc.GetTheme().uiFont, temp, bounds.centerX(), startY + 90, textColor, ALIGN_CENTER);
+	dc.DrawText(dc.GetTheme().uiFont, cr->T_cstr("license", "Free Software under GPL 2.0+"), bounds.centerX(), startY + 125, textColor, ALIGN_CENTER);
+
+	dc.DrawText(dc.GetTheme().uiFont, "www.ppsspp.org", bounds.centerX(), startY + 160, textColor, ALIGN_CENTER);
+#else
 	dc.DrawText(dc.GetTheme().uiFont, temp, bounds.centerX(), startY + 70, textColor, ALIGN_CENTER);
 	dc.DrawText(dc.GetTheme().uiFont, cr->T_cstr("license", "Free Software under GPL 2.0+"), bounds.centerX(), startY + 110, textColor, ALIGN_CENTER);
 
 	dc.DrawText(dc.GetTheme().uiFont, "www.ppsspp.org", bounds.centerX(), startY + 160, textColor, ALIGN_CENTER);
+#endif
 
 #if !PPSSPP_PLATFORM(UWP) || defined(_DEBUG)
 	// Draw the graphics API, except on UWP where it's always D3D11
@@ -675,6 +683,11 @@ void CreditsScroller::Draw(UIContext &dc) {
 	specialthankssolarmystic += ')';
 
 	std::string_view credits[] = {
+#ifdef REALME_C21Y_EDITION
+		"PSP by Kyuu (Realme C21Y Edition)",
+		"Based on PPSSPP by Henrik Rydg\xc3\xa5rd & Contributors",
+		"",
+#endif
 		System_GetPropertyBool(SYSPROP_APP_GOLD) ? "PPSSPP Gold" : "PPSSPP",
 		"",
 		cr->T("title", "A fast and portable PSP emulator"),

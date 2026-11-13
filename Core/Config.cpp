@@ -240,10 +240,14 @@ static float DefaultUISaturation() {
 }
 
 static int DefaultBackgroundAnimation() {
+#ifdef REALME_C21Y_EDITION
+	return (int)BackgroundAnimation::OFF;
+#else
 	if (IsRealmeC21YDevice()) {
 		return (int)BackgroundAnimation::OFF;
 	}
 	return (int)BackgroundAnimation::WAVE;
+#endif
 }
 
 static bool DefaultEnableLogging() {
@@ -259,6 +263,14 @@ static bool DefaultTransparentBackground() {
 		return false;
 	}
 	return true;
+}
+
+static std::string DefaultThemeName() {
+#ifdef REALME_C21Y_EDITION
+	return "PS3 Original";
+#else
+	return "Default";
+#endif
 }
 
 static int DefaultUIScaleFactor() {
@@ -1617,7 +1629,7 @@ static constexpr ConfigSetting upgradeSettings[] = {
 };
 
 static constexpr ConfigSetting themeSettings[] = {
-	ConfigSetting("ThemeName", SETTING(g_Config, sThemeName), "Default", CfgFlag::DEFAULT),
+	ConfigSetting("ThemeName", SETTING(g_Config, sThemeName), &DefaultThemeName, CfgFlag::DEFAULT),
 };
 
 static constexpr ConfigSetting vrSettings[] = {

@@ -225,7 +225,7 @@ android {
 			assets.directories.add("../assets")
 		}
 		create("realmeC21y") {
-			res.directories.add("normal/res")
+			res.directories.add("realmeC21y/res")
 			manifest.srcFile("realmeC21y/AndroidManifest.xml")
 		}
 	}
@@ -314,7 +314,7 @@ android {
 			}
 		}
 		create("realmeC21y") {
-			applicationId = "org.ppsspp.ppsspp"
+			applicationId = "org.ppsspp.kyuu"
 			versionNameSuffix = "-realme-c21y"
 			dimension = "variant"
 			externalNativeBuild {

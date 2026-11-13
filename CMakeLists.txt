@@ -222,6 +222,7 @@ endif()
 
 if(REALME_C21Y_TUNE AND ANDROID AND ARM64)
 	message("Applying Unisoc Tiger T610 / ARM64 Release compiler tuning")
+	add_compile_definitions(REALME_C21Y_EDITION=1)
 	add_compile_options(
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-O3>
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75>

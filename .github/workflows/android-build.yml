@@ -84,12 +84,14 @@ jobs:
         run: |
           KEYSTORE_PATH="${RUNNER_TEMP}/realme-c21y-release.keystore"
           if [ -n "$SECRET_STORE_B64" ] && [ -n "$SECRET_STORE_PASS" ] && [ -n "$SECRET_KEY_ALIAS" ] && [ -n "$SECRET_KEY_PASS" ]; then
+            echo "Signing mode: persistent GitHub Actions Release keystore."
             echo "$SECRET_STORE_B64" | base64 -d > "$KEYSTORE_PATH"
             echo "SIGN_STORE_FILE=${KEYSTORE_PATH}" >> "$GITHUB_ENV"
             echo "SIGN_STORE_PASS=${SECRET_STORE_PASS}" >> "$GITHUB_ENV"
             echo "SIGN_KEY_ALIAS=${SECRET_KEY_ALIAS}" >> "$GITHUB_ENV"
             echo "SIGN_KEY_PASS=${SECRET_KEY_PASS}" >> "$GITHUB_ENV"
           else
+            echo "Signing mode: ephemeral CI keystore (RELEASE_STORE_* secrets not configured)."
             RAND_PASS="$(openssl rand -hex 16)"
             echo "::add-mask::${RAND_PASS}"
             keytool -genkeypair -v \
@@ -137,7 +139,7 @@ jobs:
             exit 1
           fi
 
-          OUT_APK="dist/PPSSPP-Realme-C21Y-ARM64.apk"
+          OUT_APK="dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk"
           cp "$BUILT_APK" "$OUT_APK"
           sha256sum "$OUT_APK" > "${OUT_APK}.sha256"
 
@@ -150,18 +152,33 @@ jobs:
             echo "ERROR: Non-ARM64 native libraries found in APK!"
             exit 1
           fi
+          echo "$APK_LIST" | grep -q "classes.dex" || { echo "ERROR: Missing classes.dex"; exit 1; }
           echo "$APK_LIST" | grep -q "assets/lang/en_US.ini" || { echo "ERROR: Missing assets/lang/en_US.ini"; exit 1; }
           echo "$APK_LIST" | grep -q "assets/lang/id_ID.ini" || { echo "ERROR: Missing assets/lang/id_ID.ini"; exit 1; }
+          echo "$APK_LIST" | grep -q "assets/themes/ps3original.ini" || { echo "ERROR: Missing assets/themes/ps3original.ini"; exit 1; }
           if echo "$APK_LIST" | grep -qE "assets/(compatvr\.ini|redump\.csv|lang/ja_JP\.ini)"; then
             echo "ERROR: Trimmed bloat assets still present in APK!"
             exit 1
           fi
 
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name "apksigner" -type f | sort -V | tail -n 1 || true)
+          CERT_SHA256="unavailable"
           if [ -n "$APKSIGNER" ]; then
-            "$APKSIGNER" verify --verbose "$OUT_APK"
+            SIGN_INFO=$("$APKSIGNER" verify --verbose --print-certs "$OUT_APK")
+            echo "$SIGN_INFO"
+            CERT_SHA256=$(echo "$SIGN_INFO" | grep -m1 "Signer #1 certificate SHA-256 digest:" | awk '{print $NF}' || true)
           else
             echo "WARNING: apksigner binary not found under ${ANDROID_HOME}/build-tools"
+          fi
+
+          AAPT2=$(find "${ANDROID_HOME}/build-tools" -name "aapt2" -type f | sort -V | tail -n 1 || true)
+          if [ -n "$AAPT2" ]; then
+            BADGING=$("$AAPT2" dump badging "$OUT_APK")
+            echo "$BADGING" | grep -E "^(package:|application-label)"
+            echo "$BADGING" | grep -Fq "package: name='org.ppsspp.kyuu'" || { echo "ERROR: Unexpected package ID (expected org.ppsspp.kyuu)"; exit 1; }
+            echo "$BADGING" | grep -Fq "application-label:'PSP by Kyuu'" || { echo "ERROR: Unexpected application-label (expected PSP by Kyuu)"; exit 1; }
+          else
+            echo "WARNING: aapt2 binary not found under ${ANDROID_HOME}/build-tools"
           fi
 
           APK_SIZE=$(stat -c%s "$OUT_APK")
@@ -169,24 +186,28 @@ jobs:
           VER_NAME=$(cat android/versionname.txt 2>/dev/null || echo "unknown")
           VER_CODE=$(cat android/versioncode.txt 2>/dev/null || echo "unknown")
           SHA256=$(cut -d' ' -f1 "${OUT_APK}.sha256")
+          echo "CERT_SHA256=${CERT_SHA256:-unavailable}" > dist/cert_sha256.txt
 
           {
-            echo "## PPSSPP Realme C21Y ARM64 Build Summary"
+            echo "## PSP by Kyuu (Realme C21Y ARM64) Build Summary"
             echo "- **Build Type**: ${{ steps.cfg.outputs.build_type }}"
-            echo "- **APK File**: \`PPSSPP-Realme-C21Y-ARM64.apk\`"
+            echo "- **App Name / Package ID**: \`PSP by Kyuu\` (\`org.ppsspp.kyuu\`)"
+            echo "- **APK File**: \`PSP-by-Kyuu-Realme-C21Y-ARM64.apk\`"
             echo "- **Size**: ${APK_SIZE_MB} MB (${APK_SIZE} bytes)"
             echo "- **Version Name / Code**: \`${VER_NAME}\` (\`${VER_CODE}\`)"
-            echo "- **SHA256**: \`${SHA256}\`"
+            echo "- **APK SHA256**: \`${SHA256}\`"
+            echo "- **Signer Cert SHA256**: \`${CERT_SHA256:-unavailable}\`"
             echo "- **ABIs**: \`arm64-v8a\` only"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: PPSSPP-Realme-C21Y-ARM64
+          name: PSP-by-Kyuu-Realme-C21Y-ARM64
           path: |
-            dist/PPSSPP-Realme-C21Y-ARM64.apk
-            dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256
+            dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk
+            dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk.sha256
+            dist/cert_sha256.txt
           if-no-files-found: error
 
       - name: Publish GitHub Release
@@ -196,42 +217,46 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          TITLE="PPSSPP Realme C21Y ${TAG}"
+          TITLE="PSP by Kyuu (Realme C21Y ${TAG})"
           NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
-          SHA256=$(cut -d' ' -f1 dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256)
-          APK_SIZE=$(awk "BEGIN { printf \"%.2f\", $(stat -c%s dist/PPSSPP-Realme-C21Y-ARM64.apk) / 1048576 }")
-          export TITLE APK_SIZE SHA256
+          SHA256=$(cut -d' ' -f1 dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk.sha256)
+          CERT_SHA256=$(cut -d'=' -f2 dist/cert_sha256.txt 2>/dev/null || echo "unavailable")
+          APK_SIZE=$(awk "BEGIN { printf \"%.2f\", $(stat -c%s dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk) / 1048576 }")
+          export TITLE APK_SIZE SHA256 CERT_SHA256
           python3 - <<'PY' > "$NOTES_FILE"
-          import os
+          import os, textwrap
           title = os.environ["TITLE"]
           apk_size = os.environ["APK_SIZE"]
           sha256 = os.environ["SHA256"]
-          print(f"""## {title} — Extreme Performance Edition
+          cert_sha256 = os.environ["CERT_SHA256"]
+          print(textwrap.dedent(f"""
+          ## {title} — Extreme Performance & PS3 Original Light UI
 
-          Build khusus Android ARM64 (`arm64-v8a`) yang dioptimalkan untuk **Realme C21Y** (Unisoc Tiger T610, Cortex-A75/A55, Mali-G52, RAM 3 GB & 4 GB, layar 1600×720).
+          Build khusus Android ARM64 (`arm64-v8a`) bernama **PSP by Kyuu** (`org.ppsspp.kyuu`) yang dioptimalkan untuk **Realme C21Y** (Unisoc Tiger T610, Cortex-A75/A55, Mali-G52, RAM 3 GB & 4 GB, layar 1600×720). Menggunakan `applicationId` terpisah dan Release keystore persisten sehingga dapat dipasang **berdampingan (side-by-side)** dengan PPSSPP resmi (`org.ppsspp.ppsspp`).
 
-          ### Ringkasan Utama
-          - Deteksi otomatis perangkat Realme C21Y / Unisoc T610 serta varian RAM 3 GB vs 4 GB.
-          - Tiga profil performa bawaan di menu Graphics (**Performance Mode**): **Ultra Performance**, **Balanced** (default), dan **Compatibility**.
-          - Konfigurasi default siap pakai: resolusi render `1x PSP`, `Auto Frameskip`, filtering performa, `Anisotropic Filtering Off`, tanpa shader pascaproses/animasi latar berat, dan audio `Granular` latensi rendah.
-          - Akselerasi konversi tekstur ARM64 NEON SIMD (`ColorConv`), tuning compiler `-mtune=cortex-a75` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler `onTrimMemory` / pemantauan suhu API 29+ (ADPF).
-          - Paket APK dirampingkan: hanya `arm64-v8a`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa aset dibatasi ke `en_US` & `id_ID`.
+          ### Pembaruan Utama
+          - **Identitas & Keystore Baru**: Nama aplikasi **PSP by Kyuu**, ikon launcher/adaptif/banner kustom, package ID `org.ppsspp.kyuu`, dan penandatanganan keystore persisten (bukan keystore ephemeral).
+          - **Custom UI PS3 Original (Ringan)**: Tema bawaan **PS3 Original** bergaya XMB gelap dengan gradasi statis ringan & garis horizon tipis tanpa shader gelombang animasi berat, sambil tetap menampilkan kredit pengembang asli **PPSSPP (Henrik Rydgård & Contributors)**.
+          - **Optimasi Perangkat & RAM**: Deteksi otomatis Realme C21Y / T610 (varian 3 GB vs 4 GB), 3 profil performa (**Ultra Performance**, **Balanced**, **Compatibility**), konversi tekstur ARM64 NEON SIMD, `-mtune=cortex-a75` + ThinLTO, batas VMA Vulkan adaptif (16/32 MB), eviksi cache tekstur saat `onTrimMemory`, serta pemantauan suhu ADPF (API 29+).
+          - **Build Ringkas**: Hanya `arm64-v8a`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa UI `en_US` + `id_ID`.
 
           ### Verifikasi Paket
-          - **Berkas**: `PPSSPP-Realme-C21Y-ARM64.apk`
+          - **Berkas**: `PSP-by-Kyuu-Realme-C21Y-ARM64.apk`
+          - **Package ID**: `org.ppsspp.kyuu`
           - **Ukuran**: {apk_size} MB
-          - **SHA256**: `{sha256}`
-          - **Catatan**: APK telah dikompilasi dan diverifikasi integritas paket/tanda tangannya oleh CI. Pengujian FPS, suhu, dan stabilitas game secara langsung pada unit fisik Realme C21Y belum dijalankan di lingkungan CI ini.
+          - **SHA256 APK**: `{sha256}`
+          - **SHA256 Sertifikat Penanda**: `{cert_sha256}`
+          - **Catatan**: APK dikompilasi dan diverifikasi integritas paket/tanda tangan serta metadata `aapt2` oleh CI. Pengujian FPS, suhu, dan stabilitas game secara langsung pada unit fisik Realme C21Y belum dijalankan di lingkungan CI ini.
 
-          Berdasarkan proyek sumber terbuka [hrydgard/ppsspp](https://github.com/hrydgard/ppsspp) (GPL v2.0+).""")
+          Dibangun di atas proyek sumber terbuka **[PPSSPP](https://github.com/hrydgard/ppsspp)** karya **Henrik Rydgård** & para kontributor ([GPL v2.0+](LICENSE.TXT)).
+          """).lstrip("\n"))
           PY
-          sed -i 's/^          //' "$NOTES_FILE"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/PPSSPP-Realme-C21Y-ARM64.apk dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256 --clobber
+            gh release upload "$TAG" dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk.sha256 --clobber
             gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
           else
-            gh release create "$TAG" dist/PPSSPP-Realme-C21Y-ARM64.apk dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256 \
+            gh release create "$TAG" dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk dist/PSP-by-Kyuu-Realme-C21Y-ARM64.apk.sha256 \
               --title "$TITLE" \
               --notes-file "$NOTES_FILE"
           fi

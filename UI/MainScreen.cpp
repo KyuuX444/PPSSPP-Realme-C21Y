@@ -300,18 +300,24 @@ public:
 		UI::AnchorLayout::Draw(dc);
 
 		const AtlasImage *iconImg = dc.Draw()->GetAtlas()->getImage(GetIconID());
-		const AtlasImage *logoImg = dc.Draw()->GetAtlas()->getImage(ImageID("I_LOGO"));
 		if (!iconImg) {
 			return;
 		}
 
 		dc.Draw()->DrawImage(GetIconID(), bounds_.x, bounds_.y, 1.0f);
 
+#ifdef REALME_C21Y_EDITION
+		if (bounds_.w < iconImg->w + 130) {
+			return;
+		}
+#else
+		const AtlasImage *logoImg = dc.Draw()->GetAtlas()->getImage(ImageID("I_LOGO"));
 		if (bounds_.w < iconImg->w + logoImg->w + 36) {
 			return;
 		}
 
 		dc.Draw()->DrawImage(ImageID("I_LOGO"), bounds_.x + iconImg->w + 8, bounds_.y + 4, 1.0f);
+#endif
 
 		std::string versionString = PPSSPP_GIT_VERSION;
 		// Strip the 'v' from the displayed version, and shorten the commit hash.
@@ -327,6 +333,20 @@ public:
 		}
 		dc.Flush();
 
+#ifdef REALME_C21Y_EDITION
+		const FontStyle *titleStyle = GetTextStyle(dc, TextSize::Normal);
+		dc.DrawText(*titleStyle, "PSP by Kyuu",
+			bounds_.x + iconImg->w + 8,
+			bounds_.y + 4,
+			dc.GetTheme().headerStyle.fgColor);
+
+		const std::string baseVersion = "Base: PPSSPP " + versionString;
+		const FontStyle *subStyle = GetTextStyle(dc, TextSize::Tiny);
+		dc.DrawText(*subStyle, baseVersion,
+			bounds_.x + iconImg->w + 8,
+			bounds_.y + 34,
+			dc.GetTheme().infoStyle.fgColor);
+#else
 		const bool tiny = versionString.size() > 10;
 
 		const FontStyle *style = GetTextStyle(dc, tiny ? TextSize::Tiny : TextSize::Small);
@@ -334,6 +354,7 @@ public:
 			bounds_.x + iconImg->w + 8,
 			bounds_.y + logoImg->h + (tiny ? 8 : 6),
 			dc.GetTheme().infoStyle.fgColor);
+#endif
 	}
 
 	void GetContentDimensions(const UIContext &dc, float &w, float &h) const override {

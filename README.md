@@ -1,53 +1,54 @@
-# PPSSPP — Edisi Realme C21Y (Extreme Performance Edition)
+# PSP by Kyuu — PPSSPP Edisi Realme C21Y (Extreme Performance & PS3 Original UI)
 
 [![Build Status](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/actions/workflows/android-build.yml/badge.svg?branch=realme-c21y-optimization)](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/actions/workflows/android-build.yml)
-[![Release](https://img.shields.io/github/v/release/KyuuX444/PPSSPP-Realme-C21Y?label=Rilis%20APK)](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/tag/v1.0)
+[![Release](https://img.shields.io/github/v/release/KyuuX444/PPSSPP-Realme-C21Y?label=Rilis%20APK)](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/latest)
 [![Platform](https://img.shields.io/badge/Android-ARM64%20(arm64--v8a)-3DDC84)](#spesifikasi-perangkat-target)
 [![License](https://img.shields.io/badge/License-GPL%20v2.0%2B-blue.svg)](LICENSE.TXT)
 
-**PPSSPP Realme C21Y — Extreme Performance Edition** adalah fork dan modifikasi khusus dari emulator PlayStation Portable (PSP) sumber terbuka **[PPSSPP](https://github.com/hrydgard/ppsspp)** karya **Henrik Rydgård** beserta para kontributornya, yang dirancang dan dikompilasi khusus untuk ponsel **Realme C21Y** (*chipset Unisoc Tiger T610, GPU Mali-G52, ARM64, varian RAM 3 GB & 4 GB*).
+**PSP by Kyuu** (`PPSSPP Realme C21Y — Extreme Performance Edition`) adalah fork dan modifikasi khusus dari emulator PlayStation Portable (PSP) sumber terbuka **[PPSSPP](https://github.com/hrydgard/ppsspp)** karya **Henrik Rydgård** beserta para kontributornya, yang dirancang dan dikompilasi khusus untuk ponsel **Realme C21Y** (*chipset Unisoc Tiger T610, GPU Mali-G52, ARM64, varian RAM 3 GB & 4 GB*).
 
 > [!NOTE]
-> Proyek ini mempertahankan penuh lisensi **GNU General Public License v2.0 atau lebih baru** ([LICENSE.TXT](LICENSE.TXT)), hak cipta pengembang asli PPSSPP, serta seluruh komponen inti emulasi PSP (CPU JIT, GPU rendering, audio, controller, *save data*, *save state*, Memory Stick, dan kompatibilitas game).
+> Proyek ini mempertahankan penuh lisensi **GNU General Public License v2.0 atau lebih baru** ([LICENSE.TXT](LICENSE.TXT)), hak cipta serta atribusi pengembang asli PPSSPP (**Henrik Rydgård & Contributors**), dan seluruh komponen inti emulasi PSP (CPU JIT, GPU rendering, audio, controller, *save data*, *save state*, Memory Stick, dan kompatibilitas game).
 
 ---
 
 ## Tentang Emulator PSP Ini
 
-PPSSPP adalah emulator PSP (*PlayStation Portable*) berbasis **HLE (*High-Level Emulation*)** sehingga Anda dapat menjalankan game PSP secara langsung **tanpa membutuhkan file BIOS eksternal**. Pada edisi khusus Realme C21Y ini, konfigurasi bawaan, alokasi memori, pipeline rendering, dan biner APK disesuaikan agar langsung siap pakai, ringan, hemat RAM, dan stabil di perangkat entry-level bertenaga Unisoc T610.
+PPSSPP adalah emulator PSP (*PlayStation Portable*) berbasis **HLE (*High-Level Emulation*)** sehingga Anda dapat menjalankan game PSP secara langsung **tanpa membutuhkan file BIOS eksternal**. Pada edisi **PSP by Kyuu** untuk Realme C21Y ini, konfigurasi bawaan, tema UI ringan bergaya PS3 Original, alokasi memori, pipeline rendering, dan biner APK disesuaikan agar langsung siap pakai, ringan, hemat RAM, dan stabil di perangkat bertenaga Unisoc T610.
 
-### Fitur Inti PSP yang Tetap Dipertahankan
+### Fitur Inti & Identitas Baru (`v1.1`)
+- **Instalasi Side-by-Side (`org.ppsspp.kyuu`)**: memakai `applicationId` terpisah dan **Release keystore persisten** (bukan keystore sementara/ephemeral), sehingga dapat dipasang **berdampingan dengan PPSSPP resmi (`org.ppsspp.ppsspp`)** tanpa harus mencopot versi resmi terlebih dahulu.
+- **Custom UI Ringan `PS3 Original`**: tema bawaan `PS3 Original` (`assets/themes/ps3original.ini`) bernuansa gelap *sapphire-obsidian* bergaya PS3 XMB dengan latar gradasi statis + garis horizon tipis (bebas animasi gelombang berat) dan ikon/nama aplikasi **PSP by Kyuu**.
 - **Emulasi CPU & JIT ARM64** (`Arm64IRJit`) lengkap dengan percepatan *Vector FPU* (VFPU).
 - **Dukungan Format Game PSP** (sesuai `Core/Loaders.cpp`): `.iso`, `.cso`, `.chd`, `EBOOT.PBP` (`.pbp`), `.elf`/`.prx`, serta dukungan berkas terkompresi `.zip`, `.7z`, dan `.rar`.
 - **Save Data & Save State**: kompatibel penuh dengan direktori standar Memory Stick (`PSP/SAVEDATA` & `PSP/PPSSPP_STATE`).
 - **Kontrol Lengkap**: *on-screen touch controls* yang dapat diatur tata letaknya serta dukungan gamepad eksternal USB/Bluetooth.
-- **Database Kompatibilitas & Pengaturan Per-Game**: pengaturan khusus per judul game tetap berfungsi normal.
 - **Dukungan Bahasa UI**: **Bahasa Indonesia (`id_ID`)** dan **Bahasa Inggris (`en_US`)**.
 
 ---
 
-## Unduh & Verifikasi APK (`v1.0`)
+## Unduh & Verifikasi APK
 
-APK final telah dikompilasi otomatis menggunakan Android NDK `29.0.14206865` dan diverifikasi tanda tangan digital serta isi paketnya oleh GitHub Actions.
+APK dikompilasi otomatis menggunakan Android NDK `29.0.14206865` dan diverifikasi tanda tangan digital, metadata paket (`aapt2`), serta isi arsitekturnya oleh GitHub Actions.
 
 | Informasi Rilis | Detail |
 | :--- | :--- |
-| **Versi Rilis** | [**PPSSPP Realme C21Y v1.0**](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/tag/v1.0) |
-| **Berkas APK** | [`PPSSPP-Realme-C21Y-ARM64.apk`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/download/v1.0/PPSSPP-Realme-C21Y-ARM64.apk) |
-| **Ukuran APK** | `20.77 MB` (`21.782.729` bytes) |
+| **Versi Terbaru** | [**Halaman Rilis (`v1.1` / Latest)**](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/latest) |
+| **Berkas APK Terbaru** | [`PSP-by-Kyuu-Realme-C21Y-ARM64.apk`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/latest/download/PSP-by-Kyuu-Realme-C21Y-ARM64.apk) ([`.sha256`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/latest/download/PSP-by-Kyuu-Realme-C21Y-ARM64.apk.sha256)) |
+| **Nama Aplikasi / Package ID** | **`PSP by Kyuu`** / **`org.ppsspp.kyuu`** |
 | **Arsitektur** | `arm64-v8a` (khusus 64-bit ARM64 Android) |
-| **SHA256 Checksum** | `499fa2a24701042a89a7a8b822c6e0e06257a508852440a33e63e1681f7e6fbe` ([`.sha256`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/download/v1.0/PPSSPP-Realme-C21Y-ARM64.apk.sha256)) |
-| **Status Tanda Tangan** | Terverifikasi `apksigner` (APK Signature Scheme v1 & v2) |
+| **SHA-256 Sertifikat Keystore Rilis** | `73:7D:53:BE:67:C3:6A:84:8F:2C:91:5A:F5:02:85:5E:5C:09:2B:43:87:66:3F:AE:6D:AB:A3:BC:23:CE:19:7F` (`alias: psp_by_kyuu`) |
+| **Rilis Awal (`v1.0`, Arsip)** | [`PPSSPP-Realme-C21Y-ARM64.apk`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/tag/v1.0) (`20.77 MB`, SHA256 `499fa2a24701042a89a7a8b822c6e0e06257a508852440a33e63e1681f7e6fbe`) |
 
 ---
 
 ## Cara Pasang & Pakai di Realme C21Y
 
 ### 1. Instalasi APK
-1. Unduh [`PPSSPP-Realme-C21Y-ARM64.apk`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/download/v1.0/PPSSPP-Realme-C21Y-ARM64.apk) dari halaman **Releases**.
-2. Jika sebelumnya Anda memasang PPSSPP resmi dari Play Store atau sumber lain, **cadangkan folder `PSP/SAVEDATA` & `PSP/PPSSPP_STATE`** lalu **copot (*uninstall*) terlebih dahulu** agar tidak bentrok tanda tangan APK (*App not installed*).
+1. Unduh [`PSP-by-Kyuu-Realme-C21Y-ARM64.apk`](https://github.com/KyuuX444/PPSSPP-Realme-C21Y/releases/latest/download/PSP-by-Kyuu-Realme-C21Y-ARM64.apk) dari halaman **Releases** (`v1.1` atau terbaru).
+2. Karena **PSP by Kyuu** menggunakan `applicationId` terpisah (`org.ppsspp.kyuu`), aplikasi ini **dapat diinstal langsung berdampingan** dengan PPSSPP resmi (`org.ppsspp.ppsspp`) maupun PPSSPP Gold tanpa perlu mencopot versi lama. *(Jika sebelumnya Anda memasang rilis lama `v1.0` `org.ppsspp.ppsspp` dari repo ini, aplikasi `v1.1` tetap terpasang terpisah dan tidak bentrok tanda tangan).*
 3. Aktifkan izin *Install from Unknown Sources* (*Pasang aplikasi yang tidak dikenal*) di Android.
-4. Pasang APK dan buka aplikasi. Berikan izin akses folder agar PPSSPP dapat membuat atau memilih folder Memory Stick (`PSP`).
+4. Pasang APK dan buka **PSP by Kyuu**. Berikan izin akses folder agar emulator dapat membuat atau memilih folder Memory Stick (`PSP`).
 
 ### 2. Memainkan Game PSP
 1. Siapkan file game PSP legal milik Anda berformat `.iso`, `.cso`, `.chd`, atau folder `EBOOT.PBP`.
@@ -115,8 +116,11 @@ Dokumen analisis lengkap pra-optimasi tersedia di [`docs/REALME_C21Y_ANALYSIS.md
 - **Cache Tekstur Adaptif & `onTrimMemory`** (`GPU/Common/TextureCacheCommon.*`, `GPU/GPUCommon*`, `UI/NativeApp.cpp`): menurunkan ambang batas eviksi tekstur ke **48 MB / 16 MB** (3 GB RAM atau termal berat) dan **80 MB / 24 MB** (4 GB RAM) dengan *kill age* lebih ketat (`120`/`60` frame), serta memicu pembersihan aman cache latar & tekstur ketika Android mengirim `onTrimMemory`.
 - **Fallback Backend Vulkan ↔ OpenGL ES**: mengaktifkan kembali pengecekan `FailedGraphicsBackends.txt` pada Android 11+ khusus Realme C21Y.
 
-### 3. Build Ringan & Penghapusan Bloat (`realmeC21y`)
-- **Single ABI `arm64-v8a`** (`android/build.gradle.kts`): tidak menyertakan native library `armeabi-v7a`, `x86`, atau `x86_64`.
+### 3. Custom UI Ringan `PS3 Original` & Build `realmeC21y` (`PSP by Kyuu`)
+- **Identitas & Resource Overlay** (`android/build.gradle.kts`, `android/realmeC21y/res/`): mengubah `applicationId` flavor `realmeC21y` ke `org.ppsspp.kyuu` agar bisa berdampingan dengan PPSSPP resmi, mengganti `app_name` ke `PSP by Kyuu`, serta menyertakan ikon launcher/adaptif/TV banner kustom.
+- **Tema `PS3 Original` & Latar Statis Ringan** (`assets/themes/ps3original.ini`, `Core/Config.cpp`, `UI/Background.cpp`): menerapkan palet gelap *sapphire-obsidian* dengan radius sudut ringkas, `DefaultBackgroundAnimation()` -> `OFF`, dan gradasi XMB + garis horizon 4-segitiga tanpa shader gelombang berat.
+- **Identitas & Atribusi Pembuat Asli** (`UI/MainScreen.cpp`, `UI/MiscScreens.cpp`, `UI/SystemInfoScreen.cpp`): menampilkan nama `PSP by Kyuu` sambil mempertahankan logo, lisensi **GPL v2.0+**, dan kredit asli **Henrik Rydgård & Contributors** secara utuh.
+- **Single ABI `arm64-v8a`**: tidak menyertakan native library `armeabi-v7a`, `x86`, atau `x86_64`.
 - **Penonaktifan Modul Non-Esensial**: `-DUSE_DISCORD=OFF`, `-DUSE_ADRENOTOOLS=OFF` (GPU Mali-G52 tidak memakai driver kustom Qualcomm Adreno), `-DHEADLESS=OFF`, `-DUNITTEST=OFF`.
 - **R8 Shrinking & Pemangkasan Aset**: `isMinifyEnabled = true`, `isShrinkResources = true` dengan `android/proguard-rules.pro`, serta membatasi aset `realmeC21y` tanpa menyentuh file sumber upstream (`compatvr.ini`, `redump.csv`, dan bahasa selain `en_US.ini` & `id_ID.ini` dikecualikan dari paket).
 - **Manifest Overlay** (`android/realmeC21y/AndroidManifest.xml`): menghapus deklarasi/izin yang tidak dibutuhkan pada Realme C21Y (`TRANSMIT_IR`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `archos.permission.FULLSCREEN.FULL`, `hardware.type.pc`, `software.leanback`, `<profileable>`).
@@ -126,7 +130,7 @@ Dokumen analisis lengkap pra-optimasi tersedia di [`docs/REALME_C21Y_ANALYSIS.md
 ## Build Otomatis & Kompilasi Lokal
 
 ### GitHub Actions CI/CD
-Workflow [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml) otomatis menjalankan build **`PPSSPP-Realme-C21Y-ARM64.apk`** pada setiap push ke branch `realme-c21y-optimization`, `master`, tag `v*`, pull request, atau eksekusi manual (`workflow_dispatch` untuk `Release`/`Debug`).
+Workflow [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml) otomatis menjalankan build **`PSP-by-Kyuu-Realme-C21Y-ARM64.apk`** pada setiap push ke branch `realme-c21y-optimization`, `master`, tag `v*`, pull request, atau eksekusi manual (`workflow_dispatch` untuk `Release`/`Debug`).
 
 ### Kompilasi Lokal dengan Gradle
 Pastikan Android SDK, NDK `29.0.14206865`, CMake `3.22.1+`, JDK 17, dan submodule (`git submodule update --init --recursive`) sudah tersedia:
@@ -147,6 +151,6 @@ Pastikan Android SDK, NDK `29.0.14206865`, CMake `3.22.1+`, JDK 17, dan submodul
 
 ## Catatan Verifikasi & Kredit
 
-- **Yang sudah diverifikasi**: kompilasi penuh APK `realmeC21yRelease` ARM64 lewat GitHub Actions, kelengkapan isi APK (`libppsspp_jni.so` ARM64-only, hanya bahasa `en_US` & `id_ID`, minifikasi R8 `classes.dex`), SHA256 checksum, dan verifikasi `apksigner` (skema v1 & v2).
+- **Yang sudah diverifikasi**: kompilasi penuh APK `realmeC21yRelease` ARM64 lewat GitHub Actions, kelengkapan isi APK (`libppsspp_jni.so` ARM64-only, hanya bahasa `en_US` & `id_ID`, `assets/themes/ps3original.ini`, minifikasi R8 `classes.dex`), metadata `aapt2` (`org.ppsspp.kyuu` / `PSP by Kyuu`), SHA256 checksum, dan verifikasi sertifikat `apksigner`.
 - **Keterbatasan pengujian**: benchmark FPS nyata pada game berat, suhu perangkat, serta ketahanan baterai **belum dijalankan langsung pada unit fisik Realme C21Y** karena tidak ada perangkat Android fisik yang terhubung di lingkungan build ini.
 - **Kredit Proyek Asli**: seluruh fondasi emulator berasal dari [PPSSPP](https://www.ppsspp.org/) ([hrydgard/ppsspp](https://github.com/hrydgard/ppsspp)) karya **Henrik Rydgård** dan para kontributor di bawah lisensi **GNU General Public License v2.0+** ([`LICENSE.TXT`](LICENSE.TXT)).

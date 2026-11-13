@@ -423,6 +423,28 @@ void DrawBackground(UIContext &dc, float alpha, Lin::Vec3 focus) {
 
 		dc.Flush();
 		dc.RebindTexture();
+	} else if (g_Config.sThemeName == "PS3 Original") {
+		const Bounds &bounds = dc.GetBounds();
+		const Color themeBg = dc.GetTheme().backgroundColor;
+		const Color topColor = bgColor & darkenColor(themeBg);
+		const Color bottomColor = bgColor & colorBlend(themeBg, 0xFF5C3618, 0.30f);
+		ImageID img = ImageID("I_BG");
+		dc.Begin();
+		dc.Draw()->DrawImageStretchVGradient(img, bounds.x, bounds.y, bounds.x2(), bounds.y2(), topColor, bottomColor);
+		dc.Flush();
+
+		if (alpha > 0.01f) {
+			// Lightweight static PS3 XMB-inspired horizon accent (minimal quad count, zero per-frame wave math).
+			const float horizonY = bounds.y + bounds.h * 0.36f;
+			const float glowH = std::max(2.0f, 5.0f * g_display.pixel_in_dps_y);
+			const Color lineColor = alphaMul(0xFFE0B478, alpha * 0.22f);
+			const Color coreColor = alphaMul(0xFFF2D6AE, alpha * 0.35f);
+			dc.BeginNoTex();
+			dc.Draw()->RectVGradient(bounds.x, horizonY - glowH, bounds.x2(), horizonY, 0x00000000, lineColor);
+			dc.Draw()->RectVGradient(bounds.x, horizonY, bounds.x2(), horizonY + glowH, lineColor, 0x00000000);
+			dc.Draw()->Rect(bounds.x, horizonY - 0.5f * g_display.pixel_in_dps_y, bounds.w, std::max(1.0f, g_display.pixel_in_dps_y), coreColor);
+			dc.Flush();
+		}
 	} else {
 		// I_BG original color: 0xFF754D24
 		ImageID img = ImageID("I_BG");

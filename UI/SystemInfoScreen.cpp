@@ -136,6 +136,9 @@ void SystemInfoScreen::CreateDeviceInfoTab(UI::LinearLayout *deviceSpecs) {
 	Draw::DrawContext *draw = screenManager()->getDrawContext();
 
 	systemInfo->Add(new InfoItem(si->T("System Name"), System_GetProperty(SYSPROP_NAME)));
+#ifdef REALME_C21Y_EDITION
+	systemInfo->Add(new InfoItem("Edition", std::string("PSP by Kyuu (Base: PPSSPP ") + PPSSPP_GIT_VERSION + ")"));
+#endif
 #if PPSSPP_PLATFORM(ANDROID)
 	systemInfo->Add(new InfoItem(si->T("System Version"), StringFromInt(System_GetPropertyInt(SYSPROP_SYSTEMVERSION))));
 #elif PPSSPP_PLATFORM(WINDOWS)

@@ -2,6 +2,21 @@
 
 Semua perubahan dibangun di atas basis source code resmi [hrydgard/ppsspp](https://github.com/hrydgard/ppsspp) (basis `v1.20.4+`) pada branch `realme-c21y-optimization` dengan mempertahankan lisensi GPL v2.0+ dan kompatibilitas inti emulator PSP.
 
+## [v1.1] — PSP by Kyuu (`org.ppsspp.kyuu`) & PS3 Original Lightweight UI
+
+### Ditambahkan & Diubah
+- **Identitas Aplikasi & Instalasi Side-by-Side (`android/build.gradle.kts`, `android/realmeC21y/res/`)**:
+  - Mengubah `applicationId` flavor `realmeC21y` menjadi **`org.ppsspp.kyuu`** (dengan mempertahankan `namespace = "org.ppsspp.ppsspp"` agar binding JNI tetap utuh) sehingga dapat diinstal berdampingan (*side-by-side*) dengan PPSSPP resmi (`org.ppsspp.ppsspp`).
+  - Mengganti nama aplikasi menjadi **`PSP by Kyuu`** (`android/realmeC21y/res/values/strings.xml`) beserta ikon launcher, ikon bulat, adaptive foreground/background (`#000000`), dan Android TV banner (`ic_banner.png`).
+- **Keystore Rilis Persisten (`RELEASE_STORE_*` Secrets & `.github/workflows/android-build.yml`)**:
+  - Penandatanganan APK Release kini memakai keystore PKCS12 persisten (bukan keystore ephemeral per-build), dengan sidik jari sertifikat SHA-256 `73:7D:53:BE:67:C3:6A:84:8F:2C:91:5A:F5:02:85:5E:5C:09:2B:43:87:66:3F:AE:6D:AB:A3:BC:23:CE:19:7F` (`alias: psp_by_kyuu`).
+  - Penambahan verifikasi `aapt2 dump badging` (`org.ppsspp.kyuu` / `PSP by Kyuu`), `apksigner verify --verbose --print-certs`, dan pemeriksaan `assets/themes/ps3original.ini` di workflow CI.
+- **Custom UI Ringan `PS3 Original` & Atribusi Pembuat Asli**:
+  - Menambahkan tema **`assets/themes/ps3original.ini`** (palet gelap *sapphire-obsidian* bergaya PS3 XMB) beserta entri terjemahan `[Themes]` di `assets/lang/en_US.ini` dan `assets/lang/id_ID.ini`.
+  - Menetapkan `DefaultThemeName()` ke `"PS3 Original"` dan `DefaultBackgroundAnimation()` ke `OFF` saat `REALME_C21Y_EDITION=1` (`CMakeLists.txt` + `Core/Config.cpp`).
+  - Menambahkan rendering latar gradasi statis + garis horizon tipis bergaya PS3 XMB di `UI/Background.cpp` (tanpa animasi gelombang/shader berat).
+  - Menampilkan identitas **`PSP by Kyuu`** dan informasi basis **`PPSSPP`** / **`Henrik Rydgård & Contributors`** di `UI/MainScreen.cpp`, `UI/MiscScreens.cpp`, dan `UI/SystemInfoScreen.cpp`.
+
 ## [v1.0] — Realme C21Y Extreme Performance Edition
 
 ### Ditambahkan
