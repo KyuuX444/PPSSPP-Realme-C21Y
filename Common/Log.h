@@ -93,8 +93,10 @@ enum class LogLevel : int {
 struct LogChannel {
 #if defined(_DEBUG)
 	LogLevel level = LogLevel::LDEBUG;
+#elif PPSSPP_PLATFORM(ANDROID)
+	LogLevel level = LogLevel::LWARNING;
 #else
-	LogLevel level = LogLevel::LDEBUG;
+	LogLevel level = LogLevel::LINFO;
 #endif
 	bool enabled = true;
 
@@ -115,8 +117,12 @@ inline bool GenericLogEnabled(Log type, LogLevel level) {
 ATTR_FORMAT_PRINTF(5, 6) void GenericLog(Log type, LogLevel level, const char *file, int line, MSVC_FORMAT_PRINTF const char *fmt, ...);
 
 // If you want to see verbose logs, change this to VERBOSE_LEVEL.
-
+#if defined(_DEBUG) || !PPSSPP_PLATFORM(ANDROID)
 #define MAX_LOGLEVEL DEBUG_LEVEL
+#else
+// Compile out DEBUG_LOG / VERBOSE_LOG strings and hot-loop checks in Android Release builds.
+#define MAX_LOGLEVEL INFO_LEVEL
+#endif
 
 // Let the compiler optimize this out.
 // TODO: Compute a dynamic max level as well that can be checked here.

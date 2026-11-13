@@ -36,4 +36,5 @@ private:
 	APerformanceHintSession *session_ = nullptr;
 	bool failed_ = false;
 	int64_t lastCpuTimeNs_ = -1;
+	int64_t currentTargetNs_ = 0;
 };

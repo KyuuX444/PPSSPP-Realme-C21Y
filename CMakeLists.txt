@@ -212,6 +212,22 @@ option(USE_CCACHE "Use ccache if detected" ON)
 option(USE_NO_MMAP "Disable mmap usage" OFF)
 option(USE_IAP "IAP enabled" OFF)
 option(GOLD "Gold build" OFF)
+option(REALME_C21Y_TUNE "Apply Unisoc Tiger T610 (Cortex-A75/A55) ARM64 Release optimizations" OFF)
+option(USE_THIN_LTO "Enable Clang ThinLTO on Release builds" OFF)
+
+if(REALME_C21Y_TUNE AND ANDROID AND ARM64)
+	message("Applying Unisoc Tiger T610 / ARM64 Release compiler tuning")
+	add_compile_options(
+		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-O3>
+		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75.cortex-a55>
+		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-fomit-frame-pointer>
+		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections>
+		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-fdata-sections>
+	)
+	if(USE_THIN_LTO)
+		add_compile_options($<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-flto=thin>)
+	endif()
+endif()
 
 if(USE_CCACHE)
 	include(ccache)
@@ -1135,6 +1151,16 @@ if(ANDROID AND NOT LIBRETRO)
 	if(ARM64)
 		# Support 16kb page size on Android
 		target_link_options(ppsspp_jni PRIVATE "-Wl,-z,max-page-size=16384")
+	endif()
+	if(REALME_C21Y_TUNE AND ARM64)
+		target_link_options(ppsspp_jni PRIVATE
+			$<$<CONFIG:Release>:-Wl,--gc-sections>
+			$<$<CONFIG:Release>:-Wl,--icf=safe>
+			$<$<CONFIG:Release>:-Wl,-O1>
+		)
+		if(USE_THIN_LTO)
+			target_link_options(ppsspp_jni PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+		endif()
 	endif()
 endif()
 

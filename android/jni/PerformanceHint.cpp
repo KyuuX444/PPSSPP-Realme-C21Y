@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "Common/Log.h"
+#include "Core/DeviceOptimization.h"
 #include "android/jni/PerformanceHint.h"
 
 struct APerformanceHintManager;
@@ -28,13 +29,16 @@ namespace {
 
 // Half a frame. With CPU time as the measure, this leaves the other half as headroom, so the
 // scheduler keeps us on a core fast enough to finish well before the frame is due.
-constexpr int64_t TARGET_WORK_NS = 1000000000LL / 60 / 2;
+constexpr int64_t TARGET_WORK_NS_DEFAULT = 1000000000LL / 60 / 2;
+constexpr int64_t TARGET_WORK_NS_THERMAL = 11500000LL;
+constexpr int64_t MAX_VALID_WORK_SAMPLE_NS = 200000000LL;
 
 // Looked up at runtime, since we build against API 21 and these are API 33.
 struct HintApi {
 	APerformanceHintManager *(*getManager)();
 	APerformanceHintSession *(*createSession)(APerformanceHintManager *, const int32_t *, size_t, int64_t);
 	int (*reportActualWorkDuration)(APerformanceHintSession *, int64_t);
+	int (*updateTargetWorkDuration)(APerformanceHintSession *, int64_t);
 	void (*closeSession)(APerformanceHintSession *);
 
 	bool Load() {
@@ -45,6 +49,7 @@ struct HintApi {
 		getManager = (decltype(getManager))dlsym(lib, "APerformanceHint_getManager");
 		createSession = (decltype(createSession))dlsym(lib, "APerformanceHint_createSession");
 		reportActualWorkDuration = (decltype(reportActualWorkDuration))dlsym(lib, "APerformanceHint_reportActualWorkDuration");
+		updateTargetWorkDuration = (decltype(updateTargetWorkDuration))dlsym(lib, "APerformanceHint_updateTargetWorkDuration");
 		closeSession = (decltype(closeSession))dlsym(lib, "APerformanceHint_closeSession");
 		return getManager && createSession && reportActualWorkDuration && closeSession;
 	}
@@ -78,21 +83,30 @@ void PerformanceHintSession::ReportFrame() {
 	if (failed_) {
 		return;
 	}
+	const HintApi *api = GetApi();
+	const int64_t desiredTargetNs = IsThermalThrottlingSevere() ? TARGET_WORK_NS_THERMAL : TARGET_WORK_NS_DEFAULT;
 	if (!session_) {
-		const HintApi *api = GetApi();
 		APerformanceHintManager *manager = api ? api->getManager() : nullptr;
 		const int32_t tid = gettid();
-		session_ = manager ? api->createSession(manager, &tid, 1, TARGET_WORK_NS) : nullptr;
+		session_ = manager ? api->createSession(manager, &tid, 1, desiredTargetNs) : nullptr;
 		if (!session_) {
 			INFO_LOG(Log::System, "Performance hint sessions not available");
 			failed_ = true;
 			return;
 		}
-		INFO_LOG(Log::System, "Performance hint session created for thread %d, target %d us", tid, (int)(TARGET_WORK_NS / 1000));
+		currentTargetNs_ = desiredTargetNs;
+		INFO_LOG(Log::System, "Performance hint session created for thread %d, target %d us", tid, (int)(desiredTargetNs / 1000));
+	} else if (desiredTargetNs != currentTargetNs_ && api && api->updateTargetWorkDuration) {
+		if (api->updateTargetWorkDuration(session_, desiredTargetNs) == 0) {
+			currentTargetNs_ = desiredTargetNs;
+		}
 	}
 	const int64_t now = ThreadCpuTimeNs();
 	if (lastCpuTimeNs_ >= 0 && now > lastCpuTimeNs_) {
-		GetApi()->reportActualWorkDuration(session_, now - lastCpuTimeNs_);
+		const int64_t durationNs = now - lastCpuTimeNs_;
+		if (durationNs < MAX_VALID_WORK_SAMPLE_NS) {
+			api->reportActualWorkDuration(session_, durationNs);
+		}
 	}
 	lastCpuTimeNs_ = now;
 }

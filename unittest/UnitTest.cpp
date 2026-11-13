@@ -3845,6 +3845,35 @@ bool TestColorConv() {
 		EXPECT_EQ_INT(reference, value);
 	}
 
+	// Verify slice converters (including non-multiple-of-16 tails and SIMD chunks).
+	std::vector<u16> all16(65536 + 17);
+	for (size_t i = 0; i < all16.size(); i++) {
+		all16[i] = static_cast<u16>(i);
+	}
+	std::vector<u32> conv32(all16.size());
+	ConvertRGB565ToRGBA8888(conv32.data(), all16.data(), (u32)all16.size());
+	for (size_t i = 0; i < all16.size(); i++) {
+		EXPECT_EQ_INT(RGB565ToRGBA8888(all16[i]), conv32[i]);
+	}
+	ConvertRGBA5551ToRGBA8888(conv32.data(), all16.data(), (u32)all16.size());
+	for (size_t i = 0; i < all16.size(); i++) {
+		EXPECT_EQ_INT(RGBA5551ToRGBA8888(all16[i]), conv32[i]);
+	}
+	ConvertRGBA4444ToRGBA8888(conv32.data(), all16.data(), (u32)all16.size());
+	for (size_t i = 0; i < all16.size(); i++) {
+		EXPECT_EQ_INT(RGBA4444ToRGBA8888(all16[i]), conv32[i]);
+	}
+	// Test BGRA <-> RGBA both out-of-place and in-place across 33 pixels (2x16 + 1 tail).
+	std::vector<u32> bgra(33), rgbaOut(33);
+	for (u32 i = 0; i < 33; i++) {
+		bgra[i] = 0x80112233u + i * 0x01030507u;
+	}
+	ConvertBGRA8888ToRGBA8888(rgbaOut.data(), bgra.data(), 33);
+	ConvertBGRA8888ToRGBA8888(bgra.data(), bgra.data(), 33);
+	for (u32 i = 0; i < 33; i++) {
+		EXPECT_EQ_INT(rgbaOut[i], bgra[i]);
+	}
+
 	return true;
 }
 

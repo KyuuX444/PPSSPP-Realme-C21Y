@@ -246,6 +246,14 @@ static int DefaultBackgroundAnimation() {
 	return (int)BackgroundAnimation::WAVE;
 }
 
+static bool DefaultEnableLogging() {
+#if PPSSPP_PLATFORM(ANDROID) && !defined(_DEBUG)
+	return false;
+#else
+	return true;
+#endif
+}
+
 static bool DefaultTransparentBackground() {
 	if (IsRealmeC21YDevice() && IsLowRamDeviceVariant()) {
 		return false;
@@ -361,7 +369,7 @@ static void OnButtonPreferenceChanged() {
 static constexpr ConfigSetting generalSettings[] = {
 	ConfigSetting("FirstRun", SETTING(g_Config, bFirstRun), true, CfgFlag::DEFAULT),
 	ConfigSetting("RunCount", SETTING(g_Config, iRunCount), 0, CfgFlag::DEFAULT),
-	ConfigSetting("Enable Logging", SETTING(g_Config, bEnableLogging), true, CfgFlag::PER_GAME),
+	ConfigSetting("Enable Logging", SETTING(g_Config, bEnableLogging), &DefaultEnableLogging, CfgFlag::PER_GAME),
 	ConfigSetting("FileLogging", SETTING(g_Config, bEnableFileLogging), false, CfgFlag::PER_GAME)
 		.Label(I18NCat::DEVELOPER, "Log to file"),
 	ConfigSetting("AutoRun", SETTING(g_Config, bAutoRun), true, CfgFlag::DEFAULT),

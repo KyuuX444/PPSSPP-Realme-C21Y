@@ -44,6 +44,31 @@ void ConvertBGRA8888ToRGBA8888(u32 *dst, const u32 *src, u32 numPixels) {
 	}
 	// The remainder starts right after those done via SSE.
 	u32 i = sseChunks * 4;
+#elif PPSSPP_ARCH(ARM64_NEON)
+	static constexpr uint8_t kBgraToRgbaTbl[16] = {
+		2, 1, 0, 3,
+		6, 5, 4, 7,
+		10, 9, 8, 11,
+		14, 13, 12, 15,
+	};
+	const uint8x16_t tbl = vld1q_u8(kBgraToRgbaTbl);
+	u32 i = 0;
+	const u8 *srcBytes = (const u8 *)src;
+	u8 *dstBytes = (u8 *)dst;
+	for (; i + 16 <= numPixels; i += 16) {
+		uint8x16_t c0 = vld1q_u8(srcBytes + i * 4);
+		uint8x16_t c1 = vld1q_u8(srcBytes + (i + 4) * 4);
+		uint8x16_t c2 = vld1q_u8(srcBytes + (i + 8) * 4);
+		uint8x16_t c3 = vld1q_u8(srcBytes + (i + 12) * 4);
+		vst1q_u8(dstBytes + i * 4, vqtbl1q_u8(c0, tbl));
+		vst1q_u8(dstBytes + (i + 4) * 4, vqtbl1q_u8(c1, tbl));
+		vst1q_u8(dstBytes + (i + 8) * 4, vqtbl1q_u8(c2, tbl));
+		vst1q_u8(dstBytes + (i + 12) * 4, vqtbl1q_u8(c3, tbl));
+	}
+	for (; i + 4 <= numPixels; i += 4) {
+		uint8x16_t c0 = vld1q_u8(srcBytes + i * 4);
+		vst1q_u8(dstBytes + i * 4, vqtbl1q_u8(c0, tbl));
+	}
 #else
 	u32 i = 0;
 #endif
@@ -244,6 +269,31 @@ void ConvertRGB565ToRGBA8888(u32 *dst32, const u16 *src, u32 numPixels) {
 		_mm_store_si128(&dstp[i * 2 + 1], _mm_unpackhi_epi16(rg, ba));
 	}
 	u32 i = sseChunks * 8;
+#elif PPSSPP_ARCH(ARM64_NEON)
+	u32 i = 0;
+	const uint8x16_t mask1F = vdupq_n_u8(0x1F);
+	const uint8x16_t mask1C = vdupq_n_u8(0x1C);
+	const uint8x16_t mask03 = vdupq_n_u8(0x03);
+	const uint8x16_t maskF8 = vdupq_n_u8(0xF8);
+	const uint8x16_t alphaFF = vdupq_n_u8(0xFF);
+	u8 *dstBytes = (u8 *)dst32;
+	for (; i + 16 <= numPixels; i += 16) {
+		uint8x16x2_t px = vld2q_u8((const u8 *)(src + i));
+		uint8x16_t lo = px.val[0];
+		uint8x16_t hi = px.val[1];
+
+		uint8x16_t r5 = vandq_u8(lo, mask1F);
+		uint8x16_t r8 = vorrq_u8(vshlq_n_u8(r5, 3), vshrq_n_u8(r5, 2));
+
+		uint8x16_t g8 = vorrq_u8(
+			vorrq_u8(vshlq_n_u8(hi, 5), vandq_u8(vshrq_n_u8(lo, 3), mask1C)),
+			vandq_u8(vshrq_n_u8(hi, 1), mask03));
+
+		uint8x16_t b8 = vorrq_u8(vandq_u8(hi, maskF8), vshrq_n_u8(hi, 5));
+
+		uint8x16x4_t out = { { r8, g8, b8, alphaFF } };
+		vst4q_u8(dstBytes + i * 4, out);
+	}
 #else
 	u32 i = 0;
 #endif
@@ -298,6 +348,30 @@ void ConvertRGBA5551ToRGBA8888(u32 *dst32, const u16 *src, u32 numPixels) {
 		_mm_store_si128(&dstp[i * 2 + 1], _mm_unpackhi_epi16(rg, ba));
 	}
 	u32 i = sseChunks * 8;
+#elif PPSSPP_ARCH(ARM64_NEON)
+	u32 i = 0;
+	const uint8x16_t mask1F = vdupq_n_u8(0x1F);
+	const uint8x16_t mask03 = vdupq_n_u8(0x03);
+	u8 *dstBytes = (u8 *)dst32;
+	for (; i + 16 <= numPixels; i += 16) {
+		uint8x16x2_t px = vld2q_u8((const u8 *)(src + i));
+		uint8x16_t lo = px.val[0];
+		uint8x16_t hi = px.val[1];
+
+		uint8x16_t r5 = vandq_u8(lo, mask1F);
+		uint8x16_t r8 = vorrq_u8(vshlq_n_u8(r5, 3), vshrq_n_u8(r5, 2));
+
+		uint8x16_t g5 = vorrq_u8(vshlq_n_u8(vandq_u8(hi, mask03), 3), vshrq_n_u8(lo, 5));
+		uint8x16_t g8 = vorrq_u8(vshlq_n_u8(g5, 3), vshrq_n_u8(g5, 2));
+
+		uint8x16_t b5 = vandq_u8(vshrq_n_u8(hi, 2), mask1F);
+		uint8x16_t b8 = vorrq_u8(vshlq_n_u8(b5, 3), vshrq_n_u8(b5, 2));
+
+		uint8x16_t a8 = vreinterpretq_u8_s8(vshrq_n_s8(vreinterpretq_s8_u8(hi), 7));
+
+		uint8x16x4_t out = { { r8, g8, b8, a8 } };
+		vst4q_u8(dstBytes + i * 4, out);
+	}
 #else
 	u32 i = 0;
 #endif
@@ -347,6 +421,31 @@ void ConvertRGBA4444ToRGBA8888(u32 *dst32, const u16 *src, u32 numPixels) {
 		_mm_store_si128(&dstp[i * 2 + 1], _mm_unpackhi_epi16(rg, ba));
 	}
 	u32 i = sseChunks * 8;
+#elif PPSSPP_ARCH(ARM64_NEON)
+	u32 i = 0;
+	const uint8x16_t mask0F = vdupq_n_u8(0x0F);
+	const uint8x16_t maskF0 = vdupq_n_u8(0xF0);
+	u8 *dstBytes = (u8 *)dst32;
+	for (; i + 16 <= numPixels; i += 16) {
+		uint8x16x2_t px = vld2q_u8((const u8 *)(src + i));
+		uint8x16_t lo = px.val[0];
+		uint8x16_t hi = px.val[1];
+
+		uint8x16_t r4 = vandq_u8(lo, mask0F);
+		uint8x16_t r8 = vorrq_u8(r4, vshlq_n_u8(r4, 4));
+
+		uint8x16_t g4 = vandq_u8(lo, maskF0);
+		uint8x16_t g8 = vorrq_u8(g4, vshrq_n_u8(g4, 4));
+
+		uint8x16_t b4 = vandq_u8(hi, mask0F);
+		uint8x16_t b8 = vorrq_u8(b4, vshlq_n_u8(b4, 4));
+
+		uint8x16_t a4 = vandq_u8(hi, maskF0);
+		uint8x16_t a8 = vorrq_u8(a4, vshrq_n_u8(a4, 4));
+
+		uint8x16x4_t out = { { r8, g8, b8, a8 } };
+		vst4q_u8(dstBytes + i * 4, out);
+	}
 #else
 	u32 i = 0;
 #endif
