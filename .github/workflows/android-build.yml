@@ -200,26 +200,32 @@ jobs:
           NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
           SHA256=$(cut -d' ' -f1 dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256)
           APK_SIZE=$(awk "BEGIN { printf \"%.2f\", $(stat -c%s dist/PPSSPP-Realme-C21Y-ARM64.apk) / 1048576 }")
-          cat <<EOF | sed 's/^            //' > "$NOTES_FILE"
-            ## ${TITLE} — Extreme Performance Edition
+          export TITLE APK_SIZE SHA256
+          python3 - <<'PY' > "$NOTES_FILE"
+          import os
+          title = os.environ["TITLE"]
+          apk_size = os.environ["APK_SIZE"]
+          sha256 = os.environ["SHA256"]
+          print(f"""## {title} — Extreme Performance Edition
 
-            Build khusus Android ARM64 (\`arm64-v8a\`) yang dioptimalkan untuk **Realme C21Y** (Unisoc Tiger T610, Cortex-A75/A55, Mali-G52, RAM 3 GB & 4 GB, layar 1600×720).
+          Build khusus Android ARM64 (`arm64-v8a`) yang dioptimalkan untuk **Realme C21Y** (Unisoc Tiger T610, Cortex-A75/A55, Mali-G52, RAM 3 GB & 4 GB, layar 1600×720).
 
-            ### Ringkasan Utama
-            - Deteksi otomatis perangkat Realme C21Y / Unisoc T610 serta varian RAM 3 GB vs 4 GB.
-            - Tiga profil performa bawaan di menu Graphics (**Performance Mode**): **Ultra Performance**, **Balanced** (default), dan **Compatibility**.
-            - Konfigurasi default siap pakai: resolusi render \`1x PSP\`, \`Auto Frameskip\`, filtering performa, \`Anisotropic Filtering Off\`, tanpa shader pascaproses/animasi latar berat, dan audio \`Granular\` latensi rendah.
-            - Akselerasi konversi tekstur ARM64 NEON SIMD (\`ColorConv\`), tuning compiler \`-mtune=cortex-a75\` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler \`onTrimMemory\` / pemantauan suhu API 29+ (ADPF).
-            - Paket APK dirampingkan: hanya \`arm64-v8a\`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa aset dibatasi ke \`en_US\` & \`id_ID\`.
+          ### Ringkasan Utama
+          - Deteksi otomatis perangkat Realme C21Y / Unisoc T610 serta varian RAM 3 GB vs 4 GB.
+          - Tiga profil performa bawaan di menu Graphics (**Performance Mode**): **Ultra Performance**, **Balanced** (default), dan **Compatibility**.
+          - Konfigurasi default siap pakai: resolusi render `1x PSP`, `Auto Frameskip`, filtering performa, `Anisotropic Filtering Off`, tanpa shader pascaproses/animasi latar berat, dan audio `Granular` latensi rendah.
+          - Akselerasi konversi tekstur ARM64 NEON SIMD (`ColorConv`), tuning compiler `-mtune=cortex-a75` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler `onTrimMemory` / pemantauan suhu API 29+ (ADPF).
+          - Paket APK dirampingkan: hanya `arm64-v8a`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa aset dibatasi ke `en_US` & `id_ID`.
 
-            ### Verifikasi Paket
-            - **Berkas**: \`PPSSPP-Realme-C21Y-ARM64.apk\`
-            - **Ukuran**: ${APK_SIZE} MB
-            - **SHA256**: \`${SHA256}\`
-            - **Catatan**: APK telah dikompilasi dan diverifikasi integritas paket/tanda tangannya oleh CI. Pengujian FPS, suhu, dan stabilitas game secara langsung pada unit fisik Realme C21Y belum dijalankan di lingkungan CI ini.
+          ### Verifikasi Paket
+          - **Berkas**: `PPSSPP-Realme-C21Y-ARM64.apk`
+          - **Ukuran**: {apk_size} MB
+          - **SHA256**: `{sha256}`
+          - **Catatan**: APK telah dikompilasi dan diverifikasi integritas paket/tanda tangannya oleh CI. Pengujian FPS, suhu, dan stabilitas game secara langsung pada unit fisik Realme C21Y belum dijalankan di lingkungan CI ini.
 
-            Berdasarkan proyek sumber terbuka [hrydgard/ppsspp](https://github.com/hrydgard/ppsspp) (GPL v2.0+).
-            EOF
+          Berdasarkan proyek sumber terbuka [hrydgard/ppsspp](https://github.com/hrydgard/ppsspp) (GPL v2.0+).""")
+          PY
+          sed -i 's/^          //' "$NOTES_FILE"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/PPSSPP-Realme-C21Y-ARM64.apk dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256 --clobber
