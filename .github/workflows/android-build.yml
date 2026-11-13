@@ -209,7 +209,7 @@ jobs:
             - Deteksi otomatis perangkat Realme C21Y / Unisoc T610 serta varian RAM 3 GB vs 4 GB.
             - Tiga profil performa bawaan di menu Graphics (**Performance Mode**): **Ultra Performance**, **Balanced** (default), dan **Compatibility**.
             - Konfigurasi default siap pakai: resolusi render \`1x PSP\`, \`Auto Frameskip\`, filtering performa, \`Anisotropic Filtering Off\`, tanpa shader pascaproses/animasi latar berat, dan audio \`Granular\` latensi rendah.
-            - Akselerasi konversi tekstur ARM64 NEON SIMD (\`ColorConv\`), tuning compiler \`-mtune=cortex-a75.cortex-a55\` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler \`onTrimMemory\` / pemantauan suhu API 29+ (ADPF).
+            - Akselerasi konversi tekstur ARM64 NEON SIMD (\`ColorConv\`), tuning compiler \`-mtune=cortex-a75\` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler \`onTrimMemory\` / pemantauan suhu API 29+ (ADPF).
             - Paket APK dirampingkan: hanya \`arm64-v8a\`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa aset dibatasi ke \`en_US\` & \`id_ID\`.
 
             ### Verifikasi Paket

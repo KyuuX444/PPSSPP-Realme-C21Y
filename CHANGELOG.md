@@ -24,7 +24,7 @@ Semua perubahan dibangun di atas basis source code resmi [hrydgard/ppsspp](https
 - **CPU & ARM64 NEON SIMD (`Common/Data/Convert/ColorConv.cpp`, `unittest/UnitTest.cpp`)**:
   - Akselerasi ARM64 NEON (`vqtbl1q_u8`, `vld2q_u8`/`vst4q_u8`) untuk konversi pixel `BGRA8888 -> RGBA8888`, `RGB565 -> RGBA8888`, `RGBA5551 -> RGBA8888`, dan `RGBA4444 -> RGBA8888`, dilengkapi pengujian unit.
 - **Compiler & Linker (`CMakeLists.txt`)**:
-  - Opsi `REALME_C21Y_TUNE` (`-O3 -mtune=cortex-a75.cortex-a55 -fomit-frame-pointer -ffunction-sections -fdata-sections`, `--gc-sections`, `--icf=safe`) dan `USE_THIN_LTO` (`-flto=thin`).
+  - Opsi `REALME_C21Y_TUNE` (`-O3 -mtune=cortex-a75 -fomit-frame-pointer -ffunction-sections -fdata-sections`, `--gc-sections`, `--icf=safe`) dan `USE_THIN_LTO` (`-flto=thin`).
 - **ADPF & Logging Release (`android/jni/PerformanceHint.*`, `Common/Log.h`, `Core/Config.cpp`)**:
   - Dukungan dinamis `APerformanceHint_updateTargetWorkDuration` dengan batas termal `8.33 ms` ↔ `11.5 ms` serta penyaringan lonjakan frame resume `>= 200 ms`.
   - Pembatasan log verbose pada build Release Android (`LogLevel::LWARNING`, `MAX_LOGLEVEL INFO_LEVEL`, `bEnableLogging=false`).

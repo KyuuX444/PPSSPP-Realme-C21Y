@@ -34,7 +34,7 @@ Pengaturan optimasi agresif dibatasi pada perangkat Realme C21Y / Unisoc T610 ya
 
 ### 2. Optimasi CPU & ARM64 NEON SIMD
 - Implementasi kernel **ARM64 NEON SIMD** pada `Common/Data/Convert/ColorConv.cpp` (`ConvertBGRA8888ToRGBA8888` menggunakan `vqtbl1q_u8` termasuk aman in-place, serta `ConvertRGB565ToRGBA8888`, `ConvertRGBA5551ToRGBA8888`, dan `ConvertRGBA4444ToRGBA8888` menggunakan `vld2q_u8`/`vst4q_u8`), disertai cakupan unit test di `unittest/UnitTest.cpp`.
-- Opsi CMake `REALME_C21Y_TUNE` (`-O3 -mtune=cortex-a75.cortex-a55 -fomit-frame-pointer -ffunction-sections -fdata-sections`), linker `--gc-sections --icf=safe -O1`, serta `USE_THIN_LTO` (`-flto=thin`) pada build Release dengan ABI baseline aman `-march=armv8-a`.
+- Opsi CMake `REALME_C21Y_TUNE` (`-O3 -mtune=cortex-a75 -fomit-frame-pointer -ffunction-sections -fdata-sections`), linker `--gc-sections --icf=safe -O1`, serta `USE_THIN_LTO` (`-flto=thin`) pada build Release dengan ABI baseline aman `-march=armv8-a`.
 - Pengurangan overhead logging pada build Release Android (`LogLevel::LWARNING`, `MAX_LOGLEVEL INFO_LEVEL`, `bEnableLogging=false` default).
 
 ### 3. Optimasi GPU Mali-G52 & Manajemen RAM Adaptif

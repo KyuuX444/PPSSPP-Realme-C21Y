@@ -224,7 +224,7 @@ if(REALME_C21Y_TUNE AND ANDROID AND ARM64)
 	message("Applying Unisoc Tiger T610 / ARM64 Release compiler tuning")
 	add_compile_options(
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-O3>
-		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75.cortex-a55>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75>
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-fomit-frame-pointer>
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections>
 		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-fdata-sections>

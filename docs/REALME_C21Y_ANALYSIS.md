@@ -85,7 +85,7 @@ This document records the concrete architectural findings and performance/memory
    - Add `ULTRA PERFORMANCE`, `BALANCED`, and `COMPATIBILITY` profiles exposed in UI Settings and `Core/Config`.
 2. **CPU, ARM64 NEON SIMD & Release Logging Optimizations**:
    - Implement NEON vector kernels in `Common/Data/Convert/ColorConv.cpp` (`BGRA8888`, `RGB565`, `RGBA5551`, `RGBA4444` -> `RGBA8888`) and verify correctness.
-   - Lower Release `MAX_LOGLEVEL` and default `bEnableLogging = false`; tune `PerformanceHint` + ARM64 Release CMake flags (`-O3`, `-mtune=cortex-a75.cortex-a55`, ThinLTO, section GC).
+   - Lower Release `MAX_LOGLEVEL` and default `bEnableLogging = false`; tune `PerformanceHint` + ARM64 Release CMake flags (`-O3`, `-mtune=cortex-a75`, ThinLTO, section GC).
 3. **Mali-G52 GPU & Adaptive 3 GB / 4 GB RAM Management**:
    - Fix Android 11+ stock Vulkan fallback check, scale VMA block size & Vulkan push pools on UMA Android, add RAM-aware `TextureCacheCommon` budgets (`3 GB` strict vs `4 GB` balanced), and wire Android `onTrimMemory()` to purge idle caches cleanly.
 4. **Lightweight Build, Bloat Removal & GitHub Actions CI/CD**:
