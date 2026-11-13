@@ -1,0 +1,241 @@
+name: PPSSPP Realme C21Y ARM64 Build
+
+on:
+  push:
+    branches:
+      - realme-c21y-optimization
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - realme-c21y-optimization
+      - master
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Android APK build type"
+        type: choice
+        required: true
+        default: "Release"
+        options:
+          - Release
+          - Debug
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build Realme C21Y ARM64 APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch git tags and checkout submodules
+        shell: bash
+        run: |
+          git fetch --tags --force --no-recurse-submodules || true
+          .github/checkout-submodules.sh
+
+      - name: Determine build configuration
+        id: cfg
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.build_type }}" = "Debug" ]; then
+            echo "build_type=Debug" >> "$GITHUB_OUTPUT"
+            echo "build_type_lower=debug" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_type=Release" >> "$GITHUB_OUTPUT"
+            echo "build_type_lower=release" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@f09c25b45002a07be955cbe52e8cee55643f89d # v1.2.24
+        with:
+          key: android-realme-c21y-arm64-${{ steps.cfg.outputs.build_type_lower }}
+          save: ${{ github.ref == 'refs/heads/realme-c21y-optimization' || startsWith(github.ref, 'refs/tags/v') }}
+
+      - name: Accept Android SDK licenses and ensure CLI tools
+        shell: bash
+        run: |
+          mkdir -p "${ANDROID_HOME}/licenses"
+          SDKMANAGER=$(command -v sdkmanager || find "${ANDROID_HOME}/cmdline-tools" -name "sdkmanager" -type f 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -n "$SDKMANAGER" ] && [ -x "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          fi
+
+      - name: Prepare Release signing keystore
+        if: steps.cfg.outputs.build_type == 'Release'
+        shell: bash
+        env:
+          SECRET_STORE_B64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          SECRET_STORE_PASS: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          SECRET_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SECRET_KEY_PASS: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          KEYSTORE_PATH="${RUNNER_TEMP}/realme-c21y-release.keystore"
+          if [ -n "$SECRET_STORE_B64" ] && [ -n "$SECRET_STORE_PASS" ] && [ -n "$SECRET_KEY_ALIAS" ] && [ -n "$SECRET_KEY_PASS" ]; then
+            echo "$SECRET_STORE_B64" | base64 -d > "$KEYSTORE_PATH"
+            echo "SIGN_STORE_FILE=${KEYSTORE_PATH}" >> "$GITHUB_ENV"
+            echo "SIGN_STORE_PASS=${SECRET_STORE_PASS}" >> "$GITHUB_ENV"
+            echo "SIGN_KEY_ALIAS=${SECRET_KEY_ALIAS}" >> "$GITHUB_ENV"
+            echo "SIGN_KEY_PASS=${SECRET_KEY_PASS}" >> "$GITHUB_ENV"
+          else
+            RAND_PASS="$(openssl rand -hex 16)"
+            echo "::add-mask::${RAND_PASS}"
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_PATH" \
+              -storetype PKCS12 \
+              -alias ppsspp_realme_c21y \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass "$RAND_PASS" \
+              -keypass "$RAND_PASS" \
+              -dname "CN=PPSSPP Realme C21Y, OU=Community Build, O=PPSSPP-Realme-C21Y, L=ID, C=ID"
+            echo "SIGN_STORE_FILE=${KEYSTORE_PATH}" >> "$GITHUB_ENV"
+            echo "SIGN_STORE_PASS=${RAND_PASS}" >> "$GITHUB_ENV"
+            echo "SIGN_KEY_ALIAS=ppsspp_realme_c21y" >> "$GITHUB_ENV"
+            echo "SIGN_KEY_PASS=${RAND_PASS}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Realme C21Y ARM64 APK
+        shell: bash
+        env:
+          NDK_CCACHE: ccache
+          USE_CCACHE: 1
+          CCACHE_FILECLONE: "true"
+          CCACHE_DEPEND: "true"
+          CCACHE_COMPILERCHECK: content
+          CCACHE_SLOPPINESS: clang_index_store,ivfsoverlay,include_file_ctime,include_file_mtime,modules,system_headers,time_macros
+        run: |
+          GRADLE_ARGS=(
+            ":android:assembleRealmeC21y${{ steps.cfg.outputs.build_type }}"
+            "--no-daemon"
+            "--stacktrace"
+          )
+          if [ "${{ steps.cfg.outputs.build_type }}" = "Release" ]; then
+            GRADLE_ARGS+=(
+              "-PRELEASE_STORE_FILE=${SIGN_STORE_FILE}"
+              "-PRELEASE_STORE_PASSWORD=${SIGN_STORE_PASS}"
+              "-PRELEASE_KEY_ALIAS=${SIGN_KEY_ALIAS}"
+              "-PRELEASE_KEY_PASSWORD=${SIGN_KEY_PASS}"
+            )
+          fi
+          ./gradlew "${GRADLE_ARGS[@]}"
+
+      - name: Package and verify APK
+        shell: bash
+        run: |
+          mkdir -p dist
+          BUILT_APK=$(find android/build/outputs/apk/realmeC21y/${{ steps.cfg.outputs.build_type_lower }} -maxdepth 2 -type f -name "*.apk" | head -n 1)
+          if [ -z "$BUILT_APK" ] || [ ! -f "$BUILT_APK" ]; then
+            echo "ERROR: Built APK not found under android/build/outputs/apk/realmeC21y/${{ steps.cfg.outputs.build_type_lower }}"
+            find android/build -name "*.apk" || true
+            exit 1
+          fi
+
+          OUT_APK="dist/PPSSPP-Realme-C21Y-ARM64.apk"
+          cp "$BUILT_APK" "$OUT_APK"
+          sha256sum "$OUT_APK" > "${OUT_APK}.sha256"
+
+          echo "Built APK: $BUILT_APK -> $OUT_APK"
+          ls -lh "$OUT_APK"
+
+          APK_LIST=$(unzip -l "$OUT_APK")
+          echo "$APK_LIST" | grep -q "lib/arm64-v8a/libppsspp_jni.so" || { echo "ERROR: Missing lib/arm64-v8a/libppsspp_jni.so"; exit 1; }
+          if echo "$APK_LIST" | grep -qE "lib/(armeabi-v7a|armeabi|x86|x86_64)/"; then
+            echo "ERROR: Non-ARM64 native libraries found in APK!"
+            exit 1
+          fi
+          echo "$APK_LIST" | grep -q "assets/lang/en_US.ini" || { echo "ERROR: Missing assets/lang/en_US.ini"; exit 1; }
+          echo "$APK_LIST" | grep -q "assets/lang/id_ID.ini" || { echo "ERROR: Missing assets/lang/id_ID.ini"; exit 1; }
+          if echo "$APK_LIST" | grep -qE "assets/(compatvr\.ini|redump\.csv|lang/ja_JP\.ini)"; then
+            echo "ERROR: Trimmed bloat assets still present in APK!"
+            exit 1
+          fi
+
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -name "apksigner" -type f | sort -V | tail -n 1 || true)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --verbose "$OUT_APK"
+          else
+            echo "WARNING: apksigner binary not found under ${ANDROID_HOME}/build-tools"
+          fi
+
+          APK_SIZE=$(stat -c%s "$OUT_APK")
+          APK_SIZE_MB=$(awk "BEGIN { printf \"%.2f\", ${APK_SIZE} / 1048576 }")
+          VER_NAME=$(cat android/versionname.txt 2>/dev/null || echo "unknown")
+          VER_CODE=$(cat android/versioncode.txt 2>/dev/null || echo "unknown")
+          SHA256=$(cut -d' ' -f1 "${OUT_APK}.sha256")
+
+          {
+            echo "## PPSSPP Realme C21Y ARM64 Build Summary"
+            echo "- **Build Type**: ${{ steps.cfg.outputs.build_type }}"
+            echo "- **APK File**: \`PPSSPP-Realme-C21Y-ARM64.apk\`"
+            echo "- **Size**: ${APK_SIZE_MB} MB (${APK_SIZE} bytes)"
+            echo "- **Version Name / Code**: \`${VER_NAME}\` (\`${VER_CODE}\`)"
+            echo "- **SHA256**: \`${SHA256}\`"
+            echo "- **ABIs**: \`arm64-v8a\` only"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: PPSSPP-Realme-C21Y-ARM64
+          path: |
+            dist/PPSSPP-Realme-C21Y-ARM64.apk
+            dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && steps.cfg.outputs.build_type == 'Release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          TITLE="PPSSPP Realme C21Y ${TAG}"
+          NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
+          SHA256=$(cut -d' ' -f1 dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256)
+          APK_SIZE=$(awk "BEGIN { printf \"%.2f\", $(stat -c%s dist/PPSSPP-Realme-C21Y-ARM64.apk) / 1048576 }")
+          cat <<EOF | sed 's/^            //' > "$NOTES_FILE"
+            ## ${TITLE} — Extreme Performance Edition
+
+            Build khusus Android ARM64 (\`arm64-v8a\`) yang dioptimalkan untuk **Realme C21Y** (Unisoc Tiger T610, Cortex-A75/A55, Mali-G52, RAM 3 GB & 4 GB, layar 1600×720).
+
+            ### Ringkasan Utama
+            - Deteksi otomatis perangkat Realme C21Y / Unisoc T610 serta varian RAM 3 GB vs 4 GB.
+            - Tiga profil performa bawaan di menu Graphics (**Performance Mode**): **Ultra Performance**, **Balanced** (default), dan **Compatibility**.
+            - Konfigurasi default siap pakai: resolusi render \`1x PSP\`, \`Auto Frameskip\`, filtering performa, \`Anisotropic Filtering Off\`, tanpa shader pascaproses/animasi latar berat, dan audio \`Granular\` latensi rendah.
+            - Akselerasi konversi tekstur ARM64 NEON SIMD (\`ColorConv\`), tuning compiler \`-mtune=cortex-a75.cortex-a55\` + ThinLTO, batas ukuran blok VMA adaptif (16 MB / 32 MB), cache tekstur adaptif, dan handler \`onTrimMemory\` / pemantauan suhu API 29+ (ADPF).
+            - Paket APK dirampingkan: hanya \`arm64-v8a\`, R8 + resource shrinking, tanpa Discord/AdrenoTools/VR, dan bahasa aset dibatasi ke \`en_US\` & \`id_ID\`.
+
+            ### Verifikasi Paket
+            - **Berkas**: \`PPSSPP-Realme-C21Y-ARM64.apk\`
+            - **Ukuran**: ${APK_SIZE} MB
+            - **SHA256**: \`${SHA256}\`
+            - **Catatan**: APK telah dikompilasi dan diverifikasi integritas paket/tanda tangannya oleh CI. Pengujian FPS, suhu, dan stabilitas game secara langsung pada unit fisik Realme C21Y belum dijalankan di lingkungan CI ini.
+
+            Berdasarkan proyek sumber terbuka [hrydgard/ppsspp](https://github.com/hrydgard/ppsspp) (GPL v2.0+).
+            EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/PPSSPP-Realme-C21Y-ARM64.apk dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256 --clobber
+            gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE"
+          else
+            gh release create "$TAG" dist/PPSSPP-Realme-C21Y-ARM64.apk dist/PPSSPP-Realme-C21Y-ARM64.apk.sha256 \
+              --title "$TITLE" \
+              --notes-file "$NOTES_FILE"
+          fi
