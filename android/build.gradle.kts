@@ -3,6 +3,32 @@ plugins {
 	id("com.google.protobuf")
 }
 
+abstract class PrepareTrimmedAssetsTask @javax.inject.Inject constructor(
+	private val fs: org.gradle.api.file.FileSystemOperations
+) : org.gradle.api.DefaultTask() {
+	@get:org.gradle.api.tasks.InputDirectory
+	@get:org.gradle.api.tasks.PathSensitive(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+	abstract val sourceDir: org.gradle.api.file.DirectoryProperty
+
+	@get:org.gradle.api.tasks.OutputDirectory
+	abstract val outputDir: org.gradle.api.file.DirectoryProperty
+
+	@org.gradle.api.tasks.TaskAction
+	fun syncAssets() {
+		fs.sync {
+			from(sourceDir)
+			into(outputDir)
+			exclude("compatvr.ini", "redump.csv", "lang/README.md")
+			exclude { details ->
+				details.relativePath.pathString.startsWith("lang/") &&
+					details.name.endsWith(".ini") &&
+					details.name != "en_US.ini" &&
+					details.name != "id_ID.ini"
+			}
+		}
+	}
+}
+
 // Utility function used to get the git version
 // All the below replaces the following "gladed.androidgitversion" config:
 // configure<com.gladed.androidgitversion.AndroidGitVersionExtension> {
@@ -150,7 +176,12 @@ android {
 			signingConfig = signingConfigs.getByName("debug")
 		}
 		getByName("release") {
-			isMinifyEnabled = false
+			isMinifyEnabled = true
+			isShrinkResources = true
+			proguardFiles(
+				getDefaultProguardFile("proguard-android-optimize.txt"),
+				"proguard-rules.pro"
+			)
 			if (project.hasProperty("RELEASE_STORE_FILE")) {
 				println("RELEASE_STORE_FILE is set. Using as signing config.")
 				signingConfig = signingConfigs.getByName("release")
@@ -174,20 +205,27 @@ android {
 			java.directories.add("src")
 			aidl.directories.add("src")
 			resources.directories.add("src")
-			assets.directories.add("../assets")
 		}
 		create("normal") {
 			res.directories.add("normal/res")
+			assets.directories.add("../assets")
 		}
 		create("gold") {
 			res.directories.add("gold/res")
+			assets.directories.add("../assets")
 		}
 		create("vr") {
 			res.directories.add("normal/res")
+			assets.directories.add("../assets")
 			manifest.srcFile("VRManifest.xml")
 		}
 		create("legacy") {
 			res.directories.add("legacy/res")
+			assets.directories.add("../assets")
+		}
+		create("realmeC21y") {
+			res.directories.add("normal/res")
+			manifest.srcFile("realmeC21y/AndroidManifest.xml")
 		}
 	}
 	productFlavors {
@@ -274,6 +312,32 @@ android {
 				abiFilters.addAll(listOf("arm64-v8a"))
 			}
 		}
+		create("realmeC21y") {
+			applicationId = "org.ppsspp.ppsspp"
+			versionNameSuffix = "-realme-c21y"
+			dimension = "variant"
+			externalNativeBuild {
+				cmake {
+					arguments.addAll(listOf(
+						"-DANDROID=true",
+						"-DANDROID_PLATFORM=android-21",
+						"-DANDROID_TOOLCHAIN=clang",
+						"-DANDROID_CPP_FEATURES=",
+						"-DANDROID_STL=c++_shared",
+						"-DREALME_C21Y_TUNE=ON",
+						"-DUSE_THIN_LTO=ON",
+						"-DUSE_DISCORD=OFF",
+						"-DUSE_ADRENOTOOLS=OFF",
+						"-DHEADLESS=OFF",
+						"-DUNITTEST=OFF"
+					))
+				}
+			}
+			ndk {
+				abiFilters.add("arm64-v8a")
+				debugSymbolLevel = "NONE"
+			}
+		}
 	}
 	buildFeatures {
 		aidl = true
@@ -287,9 +351,20 @@ androidComponents {
 			"normalDebug", "normalOptimized", "normalRelease",
 			"goldDebug", "goldRelease",
 			"vrDebug", "vrOptimized", "vrRelease",
-			"legacyDebug", "legacyOptimized", "legacyRelease"
+			"legacyDebug", "legacyOptimized", "legacyRelease",
+			"realmeC21yDebug", "realmeC21yOptimized", "realmeC21yRelease"
 		)
 		variantBuilder.enable = variantBuilder.name in enabledVariants
+	}
+	onVariants(selector().withFlavor("variant" to "realmeC21y")) { variant ->
+		val capName = variant.name.replaceFirstChar { it.uppercase() }
+		val assetTask = tasks.register<PrepareTrimmedAssetsTask>("prepare${capName}Assets") {
+			sourceDir.set(layout.projectDirectory.dir("../assets"))
+		}
+		variant.sources.assets?.addGeneratedSourceDirectory(
+			assetTask,
+			PrepareTrimmedAssetsTask::outputDir
+		)
 	}
 }
 

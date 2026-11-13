@@ -38,8 +38,9 @@
 
 #if PPSSPP_PLATFORM(ANDROID) && PPSSPP_ARCH(ARM64)
 #include "File/AndroidStorage.h"
-
+#if defined(USE_ADRENOTOOLS)
 #include <adrenotools/driver.h>
+#endif
 #endif
 
 #if PPSSPP_PLATFORM(ANDROID)
@@ -391,7 +392,7 @@ static VulkanLibraryHandle VulkanLoadLibrary(std::string *errorString) {
 #else
 	void *lib = nullptr;
 
-#if PPSSPP_PLATFORM(ANDROID) && PPSSPP_ARCH(ARM64)
+#if PPSSPP_PLATFORM(ANDROID) && PPSSPP_ARCH(ARM64) && defined(USE_ADRENOTOOLS)
 	if (!g_Config.sCustomDriver.empty() && g_Config.sCustomDriver != "Default" && !VulkanCustomDriverAllowedByOS()) {
 		WARN_LOG(Log::G3D, "Custom driver '%s' ignored, not supported on this Android version", g_Config.sCustomDriver.c_str());
 	} else if (CustomDriverInUse()) {
@@ -1056,7 +1057,7 @@ const AdrenoEnvVarDef *GetAdrenoEnvVarDefs(int *count) {
 }
 
 bool VulkanCustomDriverAllowedByOS() {
-#if PPSSPP_PLATFORM(ANDROID)
+#if PPSSPP_PLATFORM(ANDROID) && defined(USE_ADRENOTOOLS)
 	// Android 17 internal builds crash in linkernsbypass (used by AdrenoTools), so stay away from 17 until
 	// that's been tested. Preview builds report the previous release's API level, with a codename other than "REL".
 	const int apiLevel = android_get_device_api_level();
@@ -1068,8 +1069,12 @@ bool VulkanCustomDriverAllowedByOS() {
 	if (apiLevel >= 36 && strcmp(codename, "REL") != 0) {
 		return false;
 	}
-#endif
 	return true;
+#elif PPSSPP_PLATFORM(ANDROID)
+	return false;
+#else
+	return true;
+#endif
 }
 
 void VulkanApplyCustomDriverEnvVars(AdrenoEnvVar envVars) {

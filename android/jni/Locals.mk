@@ -49,6 +49,7 @@ ifeq ($(TARGET_ARCH_ABI),x86_64)
 endif
 
 ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
+  LOCAL_CFLAGS := $(LOCAL_CFLAGS) -DUSE_ADRENOTOOLS=1
   LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../ext/libadrenotools/include
   LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../ext/libadrenotools/lib/linkernsbypass
 

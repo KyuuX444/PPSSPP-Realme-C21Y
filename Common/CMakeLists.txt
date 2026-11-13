@@ -414,10 +414,8 @@ if(NOT LIBRETRO)
 	target_link_libraries(Common imgui)
 endif()
 
-if(ARM64)
-	if(ANDROID)
-		target_link_libraries(Common adrenotools)
-	endif()
+if(ARM64 AND ANDROID AND USE_ADRENOTOOLS)
+	target_link_libraries(Common adrenotools)
 endif()
 
 target_compile_definitions(Common PRIVATE Z7_CRC_NUM_TABLES=1)
