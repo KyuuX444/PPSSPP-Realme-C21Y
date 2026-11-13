@@ -23,6 +23,7 @@
 
 #include "Common/Log.h"
 
+#include "Core/DeviceOptimization.h"
 #include "GPU/GPUState.h"
 #include "GPU/ge_constants.h"
 
@@ -73,8 +74,9 @@ void DrawEngineVulkan::InitDeviceObjects() {
 	pipelineLayout_ = renderManager->CreatePipelineLayout(bindingTypes, ARRAY_SIZE(bindingTypes), "drawengine_layout");
 
 	pushUBO_ = (VulkanPushPool *)draw_->GetNativeObject(Draw::NativeObject::PUSH_POOL);
-	pushVertex_ = new VulkanPushPool(vulkan, "pushVertex", 4 * 1024 * 1024, 256, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-	pushIndex_ = new VulkanPushPool(vulkan, "pushIndex", 512 * 1024, 64, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+	const bool lowRam = IsLowRamDeviceVariant();
+	pushVertex_ = new VulkanPushPool(vulkan, "pushVertex", lowRam ? (2 * 1024 * 1024) : (4 * 1024 * 1024), 256, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+	pushIndex_ = new VulkanPushPool(vulkan, "pushIndex", lowRam ? (256 * 1024) : (512 * 1024), 64, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 
 	VkSamplerCreateInfo samp{ VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
 	samp.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

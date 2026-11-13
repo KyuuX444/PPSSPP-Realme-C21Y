@@ -73,6 +73,7 @@ public:
 	bool PresentedThisFrame() const override;
 	void SetPresentationOutput(const OutputParams *output) override;
 	bool PresentsToOtherOutput() const override;
+	void ClearCacheNextFrame() override;
 
 private:
 	void CheckDepthUsage(VirtualFramebuffer *vfb) override;
@@ -83,7 +84,6 @@ protected:
 	void UpdateCmdInfo() override;
 
 	void PreExecuteOp(u32 op, u32 diff) override;
-	void ClearCacheNextFrame() override;
 
 	// Needs to be called on GPU thread, not reporting thread.
 	void BuildReportingInfo() override;

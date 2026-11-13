@@ -342,6 +342,7 @@ public:
 	}
 
 	void NotifyFlush();
+	virtual void ClearCacheNextFrame() {}
 
 protected:
 	// While debugging is active, these may block.
@@ -351,8 +352,6 @@ protected:
 
 	bool NeedsSlowInterpreter() const;
 	GPUDebug::NotifyResult NotifyCommand(u32 pc, GPUBreakpoints *breakpoints);
-
-	virtual void ClearCacheNextFrame() {}
 
 	virtual void CheckRenderResized(const DisplayLayoutConfig &config) {}
 

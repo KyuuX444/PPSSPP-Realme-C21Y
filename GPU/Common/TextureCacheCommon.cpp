@@ -33,6 +33,7 @@
 #include "Common/GPU/thin3d.h"
 #include "Core/HDRemaster.h"
 #include "Core/Config.h"
+#include "Core/DeviceOptimization.h"
 #include "Core/Debugger/MemBlockInfo.h"
 #include "Core/System.h"
 #include "Core/HW/Display.h"
@@ -163,9 +164,8 @@ void TextureCacheCommon::StartFrame() {
 	}
 	texelsScaledThisFrame_ = 0;
 
-	if (clearCacheNextFrame_) {
+	if (clearCacheNextFrame_.exchange(false)) {
 		Clear(true);
-		clearCacheNextFrame_ = false;
 	} else {
 		Decimate(nullptr, false);
 	}
@@ -1141,9 +1141,15 @@ void TextureCacheCommon::Decimate(const TexCacheEntry *const exceptThisOne, bool
 		return;
 	}
 
-	// Compute the cache size.
+	// Compute the cache size using device-adaptive pressure thresholds on 3GB/4GB Android variants.
+	const s64 minPressure = GetAdaptiveTextureCachePressureBytes();
+	const s64 secondMinPressure = GetAdaptiveTextureCacheSecondaryPressureBytes();
+	const bool lowRamOrThermal = IsLowRamDeviceVariant() || IsThermalThrottlingSevere();
+	const int primaryKillAge = lowRamOrThermal ? 120 : TEXTURE_KILL_AGE;
+	const int secondKillAge = lowRamOrThermal ? 60 : TEXTURE_SECOND_KILL_AGE;
+
 	s64 cacheSizeEstimate = CacheSizeEstimate();
-	if (forcePressure || cacheSizeEstimate >= TEXCACHE_MIN_PRESSURE) {
+	if (forcePressure || cacheSizeEstimate >= minPressure) {
 		const u32 had = cacheSizeEstimate;
 
 		ForgetLastTexture();
@@ -1153,7 +1159,7 @@ void TextureCacheCommon::Decimate(const TexCacheEntry *const exceptThisOne, bool
 				continue;
 			}
 			bool hasClutVariants = (iter->second->status & TexStatus::MANY_CLUT_VARIANTS) != 0;
-			int killAge = hasClutVariants ? TEXTURE_KILL_AGE_CLUT : TEXTURE_KILL_AGE;
+			int killAge = hasClutVariants ? TEXTURE_KILL_AGE_CLUT : primaryKillAge;
 			if (iter->second->lastFrame + killAge < gpuStats.totals.numFlips) {
 				DEBUG_LOG(Log::TexCache, "Decimating cached texture at %08x (hash: %08x)", iter->second->addr, iter->second->fullhash);
 				cacheSizeEstimate -= iter->second->EstimateTexMemoryUsage();
@@ -1171,7 +1177,7 @@ void TextureCacheCommon::Decimate(const TexCacheEntry *const exceptThisOne, bool
 
 	s64 secondCacheSizeEstimate = SecondCacheSizeEstimate();
 	// If enabled, we also need to clear the secondary cache.
-	if (forcePressure || secondCacheSizeEstimate >= TEXCACHE_SECOND_MIN_PRESSURE) {
+	if (forcePressure || secondCacheSizeEstimate >= secondMinPressure) {
 		const u32 had = secondCacheSizeEstimate;
 
 		for (TexCache::iterator iter = secondCache_.begin(); iter != secondCache_.end(); ) {
@@ -1179,7 +1185,7 @@ void TextureCacheCommon::Decimate(const TexCacheEntry *const exceptThisOne, bool
 				++iter;
 				continue;
 			}
-			if (iter->second->lastFrame + TEXTURE_SECOND_KILL_AGE < gpuStats.totals.numFlips) {
+			if (iter->second->lastFrame + secondKillAge < gpuStats.totals.numFlips) {
 				DEBUG_LOG(Log::TexCache, "Decimating second-cache texture at %08x (hash: %08x)", iter->second->addr, iter->second->fullhash);
 				ReleaseTexture(iter->second.get(), true);
 				secondCacheSizeEstimate -= iter->second->EstimateTexMemoryUsage();
@@ -2937,7 +2943,7 @@ void TextureCacheCommon::InvalidateAll(GPUInvalidationType /*unused*/) {
 }
 
 void TextureCacheCommon::ClearNextFrame() {
-	clearCacheNextFrame_ = true;
+	clearCacheNextFrame_.store(true);
 }
 
 std::string AttachCandidate::ToString() const {

@@ -519,7 +519,7 @@ static void CheckFailedGPUBackends() {
 	// Only a custom driver is given up on, never the backend.
 	bool customDriverOnly = false;
 #if PPSSPP_PLATFORM(ANDROID)
-	if (System_GetPropertyInt(SYSPROP_SYSTEMVERSION) >= 30) {
+	if (System_GetPropertyInt(SYSPROP_SYSTEMVERSION) >= 30 && !IsRealmeC21YDevice()) {
 		// In Android 11 or later, Vulkan is as stable as OpenGL, so the only thing to check for is a custom
 		// driver that crashes. Have also seen unexplained issues with random fallbacks to OpenGL for no good
 		// reason, especially when debugging.
@@ -1616,6 +1616,17 @@ bool HandleGlobalMessage(UIMessage message, const std::string &value) {
 	} else if (message == UIMessage::TRIM_MEMORY) {
 		int level = atoi(value.c_str());
 		INFO_LOG(Log::System, "Android onTrimMemory(%d) received", level);
+		if (g_gameInfoCache) {
+			if (level >= 60) {
+				g_gameInfoCache->Clear();
+			} else if (level >= 10) {
+				g_gameInfoCache->FlushBGs();
+			}
+		}
+		// TRIM_MEMORY_RUNNING_CRITICAL (15) or background/moderate/complete (>= 40).
+		if (gpu && (level == 15 || level >= 40)) {
+			gpu->ClearCacheNextFrame();
+		}
 		return true;
 	} else {
 		return false;

@@ -18,6 +18,7 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <map>
 #include <unordered_set>
 #include <vector>
@@ -536,7 +537,7 @@ protected:
 	ClutTextureCache clutTextureCache_;
 	ShaderManagerCommon *shaderManager_;
 
-	bool clearCacheNextFrame_ = false;
+	std::atomic<bool> clearCacheNextFrame_{false};
 
 	int decimationCounter_ = 0;
 	int texelsScaledThisFrame_ = 0;

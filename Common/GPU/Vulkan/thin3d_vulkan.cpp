@@ -24,6 +24,7 @@
 #include "Common/Log.h"
 #include "Common/StringUtils.h"
 #include "Common/System/Display.h"
+#include "Common/System/System.h"
 #include "Common/Math/lin/matrix4x4.h"
 #include "Common/Data/Convert/SmallDataConvert.h"
 #include "Common/GPU/thin3d.h"
@@ -1194,7 +1195,14 @@ VKContext::VKContext(VulkanContext *vulkan, bool useRenderThread)
 	device_ = vulkan->GetDevice();
 
 	VkBufferUsageFlags usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	push_ = new VulkanPushPool(vulkan_, "pushBuffer", 4 * 1024 * 1024, 32, usage);
+	size_t pushBufferBlockSize = 4 * 1024 * 1024;
+#if PPSSPP_PLATFORM(ANDROID)
+	const int64_t totalRamMB = System_GetPropertyInt(SYSPROP_TOTAL_RAM_MB);
+	if (System_GetPropertyBool(SYSPROP_LOW_MEMORY_DEVICE) || (totalRamMB > 0 && totalRamMB <= 3400)) {
+		pushBufferBlockSize = 2 * 1024 * 1024;
+	}
+#endif
+	push_ = new VulkanPushPool(vulkan_, "pushBuffer", pushBufferBlockSize, 32, usage);
 
 	// binding 0 - uniform data
 	// binding 1 - combined sampler/image 0

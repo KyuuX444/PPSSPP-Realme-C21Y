@@ -967,6 +967,15 @@ VkResult VulkanContext::CreateDevice(int physical_device, const std::vector<cons
 	allocatorInfo.physicalDevice = physical_devices_[physical_device_];
 	allocatorInfo.device = device_;
 	allocatorInfo.instance = instance_;
+#if PPSSPP_PLATFORM(ANDROID)
+	// Bound VMA block size on 3GB/4GB UMA devices so single surviving allocations don't pin 256MB blocks.
+	const int64_t totalRamMB = System_GetPropertyInt(SYSPROP_TOTAL_RAM_MB);
+	if (totalRamMB > 0 && totalRamMB <= 3400) {
+		allocatorInfo.preferredLargeHeapBlockSize = 16 * 1024 * 1024;
+	} else if (totalRamMB > 0 && totalRamMB <= 4500) {
+		allocatorInfo.preferredLargeHeapBlockSize = 32 * 1024 * 1024;
+	}
+#endif
 	VkResult result = vmaCreateAllocator(&allocatorInfo, &allocator_);
 	_assert_(result == VK_SUCCESS);
 	_assert_(allocator_ != VK_NULL_HANDLE);
