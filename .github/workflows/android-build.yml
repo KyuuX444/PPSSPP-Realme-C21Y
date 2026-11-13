@@ -40,6 +40,9 @@ jobs:
         shell: bash
         run: |
           git fetch --tags --force --no-recurse-submodules || true
+          if [ -z "$(git tag -l 'v[0-9]*')" ]; then
+            git fetch --no-recurse-submodules --tags https://github.com/hrydgard/ppsspp.git || true
+          fi
           .github/checkout-submodules.sh
 
       - name: Determine build configuration

@@ -77,11 +77,12 @@ val gitVersionName = if (commitsSinceTag == 0) gitTag else buildString {
 	if (isDirty) append("-dirty")
 }
 
-val gitVersionCode =
+val gitVersionCode = (
 	major * 100_000_000 +
 		minor * 1000_000 +
 		patch * 10_000 +
 		commitsSinceTag
+).coerceAtLeast(1)
 
 dependencies {
 	// appcompat 1.8.0 and later need minSdk 23.
