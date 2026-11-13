@@ -179,7 +179,6 @@ void ApplyPerformanceProfile(PerformanceProfile profile, bool notifyChange) {
 		g_Config.bSkipBufferEffects = false;
 		g_Config.bHardwareTransform = true;
 		g_Config.bFastMemory = canJit;
-		g_Config.bHardwareTessellation = false;
 		g_Config.iBloomHack = 1;
 		g_Config.iDepthRasterMode = (int)DepthRasterMode::OFF;
 		g_Config.iInflightFrames = 2;
@@ -201,7 +200,6 @@ void ApplyPerformanceProfile(PerformanceProfile profile, bool notifyChange) {
 		g_Config.bSkipBufferEffects = false;
 		g_Config.bHardwareTransform = true;
 		g_Config.bFastMemory = false;
-		g_Config.bHardwareTessellation = false;
 		g_Config.iBloomHack = 0;
 		g_Config.iDepthRasterMode = (int)DepthRasterMode::DEFAULT;
 		g_Config.iSkipGPUReadbackMode = (int)SkipGPUReadbackMode::NO_SKIP;
@@ -223,7 +221,6 @@ void ApplyPerformanceProfile(PerformanceProfile profile, bool notifyChange) {
 		g_Config.bSkipBufferEffects = false;
 		g_Config.bHardwareTransform = true;
 		g_Config.bFastMemory = canJit;
-		g_Config.bHardwareTessellation = false;
 		g_Config.iBloomHack = 0;
 #if PPSSPP_ARCH(ARM64_NEON)
 		g_Config.iDepthRasterMode = (int)DepthRasterMode::LOW_QUALITY;
