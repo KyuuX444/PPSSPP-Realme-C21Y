@@ -1608,8 +1608,8 @@ extern "C" void JNICALL Java_org_ppsspp_ppsspp_NativeApp_sendMessageFromJava(JNI
 		}
 		if (parts.size() >= 3) {
 			std::lock_guard<std::mutex> guard(g_hardwareInfoLock);
-			std::string hw = StripSpaces(parts[2]);
-			std::string soc = parts.size() >= 4 ? StripSpaces(parts[3]) : "";
+			std::string hw(StripSpaces(parts[2]));
+			std::string soc = parts.size() >= 4 ? std::string(StripSpaces(parts[3])) : "";
 			if (!soc.empty() && soc != hw) {
 				g_hardwareSoc = hw.empty() ? soc : (hw + " / " + soc);
 			} else if (!hw.empty()) {

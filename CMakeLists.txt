@@ -223,14 +223,14 @@ endif()
 if(REALME_C21Y_TUNE AND ANDROID AND ARM64)
 	message("Applying Unisoc Tiger T610 / ARM64 Release compiler tuning")
 	add_compile_options(
-		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-O3>
-		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75.cortex-a55>
-		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-fomit-frame-pointer>
-		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections>
-		$<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-fdata-sections>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-O3>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-mtune=cortex-a75.cortex-a55>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-fomit-frame-pointer>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections>
+		$<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-fdata-sections>
 	)
 	if(USE_THIN_LTO)
-		add_compile_options($<$<AND:$<CONFIG:Release>,$<COMPILE_LANGUAGE:C,CXX>>:-flto=thin>)
+		add_compile_options($<$<AND:$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>,$<COMPILE_LANGUAGE:C,CXX>>:-flto=thin>)
 	endif()
 endif()
 
@@ -1159,12 +1159,12 @@ if(ANDROID AND NOT LIBRETRO)
 	endif()
 	if(REALME_C21Y_TUNE AND ARM64)
 		target_link_options(ppsspp_jni PRIVATE
-			$<$<CONFIG:Release>:-Wl,--gc-sections>
-			$<$<CONFIG:Release>:-Wl,--icf=safe>
-			$<$<CONFIG:Release>:-Wl,-O1>
+			$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-Wl,--gc-sections>
+			$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-Wl,--icf=safe>
+			$<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-Wl,-O1>
 		)
 		if(USE_THIN_LTO)
-			target_link_options(ppsspp_jni PRIVATE $<$<CONFIG:Release>:-flto=thin>)
+			target_link_options(ppsspp_jni PRIVATE $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-flto=thin>)
 		endif()
 	endif()
 endif()
